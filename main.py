@@ -160,10 +160,10 @@ class DataLoadThread(QThread):
     def load_epg_data(self):
         now = int(time.time())
         two_hours = 2 * 60 * 60
-        twenty_four_hours = 24 * 60 * 60
+        eighteen_hours = 18 * 60 * 60
         all_data = {}
         try:
-            for timestamp in range(now - two_hours, now + twenty_four_hours, 3600):  # Ajout de pas d'une heure
+            for timestamp in range(now - two_hours, now + eighteen_hours, 3600):  # Ajout de pas d'une heure
                 url = f"http://mafreebox.freebox.fr/api/v8/tv/epg/by_time/{timestamp}"
                 response = requests.get(url, timeout=60)
                 response.raise_for_status()
@@ -274,10 +274,7 @@ class EPGTable(QtWidgets.QTableWidget):
             self.setColumnWidth(column, 450) 
         self.setColumnWidth(0, 150) 
 
-    def is_column_empty(self, col_index):
-        # if col_index == 0:
-        #     return False  # Ne jamais supprimer la première colonne.
-        
+    def is_column_empty(self, col_index):       
         for row in range(self.rowCount()):
             item = self.item(row, col_index)
             if item and item.text().strip():
@@ -329,6 +326,24 @@ class EPGTable(QtWidgets.QTableWidget):
         hour = datetime.datetime.fromtimestamp(epoch).hour
         return hour
 
+    def create_program_label(self, program_start, program):
+        # Utilisation du style 'display: inline-block;' pour mieux contrôler l'alignement
+        icon_html = f"<div style='font-size: 15px; vertical-align: middle; display: inline-block;'><img src='{program['channel_icon']}' height='35' width='35' style='height : 35px; vertical-align: middle; margin-right: 5px;'> {program['title']} </div><br />"
+        # Ajustement de 'margin-top' pour aligner le texte avec l'icône
+        text = f"<span style='vertical-align: top; font-size: 12px; display: inline-block;'>{program_start.strftime('%H:%M')} {program.get('desc', '')}</span>"
+        label = QLabel(f"{icon_html}{text}")
+        label.setMargin(2)  # Réduire la marge externe
+        label.setWordWrap(True)
+        label.setStyleSheet("""
+            QLabel {
+                padding: 2px;          /* Réduire l'espacement interne */
+                text-align: left;      /* Alignement du texte */
+                line-height: 1;      /* Ajustement de l'espacement entre les lignes */
+                font-size: 12px;       /* Ajustement de la taille de la police si nécessaire */
+            }
+        """)
+        return label
+
     def populate_table_with_ordered_info(self, channel_data):
         if not self.dataLoaded:
             now = datetime.datetime.now(pytz.timezone('Europe/Paris'))
@@ -342,7 +357,9 @@ class EPGTable(QtWidgets.QTableWidget):
                     program_start = self.epoch_to_localtime_french(int(epoch_time))
                     if (program_start.hour >= start_hour or program_start.hour < start_hour - 1):
                         col = (program_start.hour - start_hour) % 24 + 1  # +1 pour les logos/noms
-                        self.setItem(row, col, QtWidgets.QTableWidgetItem(self.format_program_info(program_start, program_details)))
+                        program_label = self.create_program_label(program_start, program_details)
+                        self.setCellWidget(row, col, program_label)
+                        # self.setItem(row, col, QtWidgets.QTableWidgetItem(self.format_program_info(program_start, program_details)))
             self.dataLoaded = True
             self.set_style_cells()
             
@@ -378,7 +395,8 @@ class EPGTable(QtWidgets.QTableWidget):
         return f"{hours}h{minutes}"
 
     def format_program_info(self, program_start, program):
-        return f"{program_start.strftime('%H:%M')} {program['title']} {program.get('desc', '')}"
+        icon_html = f"<img src='{program['channel_icon']}' height='20' width='20'>"
+        return f"{icon_html} {program_start.strftime('%H:%M')} {program['title']} {program.get('desc', '')}"
 
     def find_or_create_row(self, channel_uuid, program_details):
         # Vérifiez que toutes les clés nécessaires sont présentes
