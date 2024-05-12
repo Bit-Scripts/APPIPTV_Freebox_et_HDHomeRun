@@ -57,8 +57,8 @@ Avec un dispositif HDHomeRun, vous pouvez accéder aux chaînes de la TNT ou du 
 Clonez le dépôt GitHub :  
   
 ```bash
-git clone https://github.com/votre_username/IPTVAPP.git
-cd IPTVAPP
+git clone git@github.com:Bit-Scripts/APPIPTV_Freebox_et_HDHomeRun.git
+cd APPIPTV_Freebox_et_HDHomeRun
 ```
   
 ## Installez les dépendances nécessaires :
