@@ -88,4 +88,10 @@ Ce projet est sous licence GNU General Public License v3.0. Voir le fichier [LIC
   
 ## Contribution
   
-Les contributions sont les bienvenues. Veuillez créer une pull request pour toute amélioration.  
+Les contributions sont vivement encouragées et chaque contribution est appréciée. Si vous souhaitez contribuer, vous pouvez :  
+  
+- **Rapporter des Bugs** : Utilisez les [issues](https://github.com/Bit-Scripts/APPIPTV_Freebox_et_HDHomeRun/issues) pour signaler des bugs.  
+- **Proposer des Fonctionnalités** : Vous pouvez aussi proposer de nouvelles fonctionnalités par le biais des [issues](https://github.com/Bit-Scripts/APPIPTV_Freebox_et_HDHomeRun/issues).  
+- **Envoyer des Pull Requests** : Si vous avez amélioré notre code ou ajouté des fonctionnalités, n'hésitez pas à envoyer une pull request.   
+  
+Veuillez consulter le [guide de contribution de GitHub](https://docs.github.com/fr/communities/setting-up-your-project-for-healthy-contributions/setting-guidelines-for-repository-contributors) pour plus de détails sur comment contribuer efficacement.  
