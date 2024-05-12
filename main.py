@@ -7,7 +7,7 @@ import requests
 from PyQt6 import QtWidgets
 from PyQt6.QtGui import QPixmap, QColor, QPalette, QIcon, QPainter
 from PyQt6.QtCore import Qt, QObject, QSize, QEvent, pyqtSignal, QPropertyAnimation, QEasingCurve, QTimer, QThread
-from PyQt6.QtWidgets import QMessageBox, QDialog, QLineEdit, QPushButton, QCheckBox, QTableWidgetItem, QApplication, QMainWindow, QStackedWidget, QVBoxLayout, QScrollArea, QWidget, QGridLayout, QToolButton, QSplitter, QHBoxLayout, QLabel
+from PyQt6.QtWidgets import QTableWidget, QMessageBox, QDialog, QLineEdit, QPushButton, QCheckBox, QTableWidgetItem, QApplication, QMainWindow, QStackedWidget, QVBoxLayout, QScrollArea, QWidget, QGridLayout, QToolButton, QSplitter, QHBoxLayout, QLabel
 import vlc
 from io import BytesIO
 from functools import lru_cache
@@ -158,12 +158,24 @@ class DataLoadThread(QThread):
             return {}
 
     def load_epg_data(self):
-        url = f"http://mafreebox.freebox.fr/api/v8/tv/epg/by_time/{int(time.time())}"
+        now = int(time.time())
+        two_hours = 2 * 60 * 60
+        twenty_four_hours = 24 * 60 * 60
+        all_data = {}
         try:
-            response = requests.get(url, timeout=60)
-            response.raise_for_status()
-            data = response.json()
-            return data['result']
+            for timestamp in range(now - two_hours, now + twenty_four_hours, 3600):  # Ajout de pas d'une heure
+                url = f"http://mafreebox.freebox.fr/api/v8/tv/epg/by_time/{timestamp}"
+                response = requests.get(url, timeout=60)
+                response.raise_for_status()
+                data = response.json()
+                if 'result' in data:
+                    for uuid, value in data['result'].items():
+                        if uuid in all_data:
+                            # Ici, dépend de la structure des données, par exemple, ajouter à une liste ou mettre à jour un sous-dictionnaire
+                            all_data[uuid].update(value)  # Si c'est un dictionnaire
+                        else:
+                            all_data[uuid] = value
+            return all_data
         except requests.RequestException as e:
             logger.error(f"Failed to load EPG data: {e}", exc_info=True)
             return {}
@@ -185,7 +197,6 @@ class DataLoadThread(QThread):
                 enriched_data[uuid_ordered] = enriched_programs
             else:
                 logger.error(f"Missing program data for UUID: {uuid_ordered}")
-
         return enriched_data
 
     def emit_sorted_data(self, channel_info, epg_data):
@@ -998,7 +1009,6 @@ class MainWindow(QMainWindow):
             self.epg_table = EPGTable(self)
             self.data_thread = DataLoadThread(self.ordered_uuids)
             self.data_thread.data_loaded.connect(self.epg_table.populate_table_with_ordered_info)
-            # self.data_thread.channels_loaded.connect(self.epg_table.on_channels_loaded)
             self.data_thread.start()
 
         if not self.is_widget_in_layout(self.info_widget_area.layout(), self.epg_table):
