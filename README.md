@@ -1,14 +1,21 @@
-# APPIPTV_Freebox_et_HDHomeRun  
+# APPIPTV Freebox et HDHomeRun  
   
-IPTVAPP est une application de streaming IPTV avec une interface utilisateur graphique basée sur PyQt6, permettant de visualiser des programmes TV en direct via VLC media player.  
+![Lancement Chaine](./image/Lancement_Chaine.png)
+  
+IPTVAPP est une application de streaming IPTV avec une interface utilisateur graphique basée sur PyQt6, permettant de visualiser des programmes TV en direct via la bibliothèque de VLC media player en Python.  
   
 ## Fonctionnalités  
   
 - Visualisation de programmes TV en direct.
+![En fonctionnement](./image/En_fonctionnement.png)  
 - Gestion de playlists M3U.
+![Paramètres](./image/Paramètres.png) 
 - Configuration des adresses IP pour les dispositifs HDHomeRun.
-- Interface utilisateur entièrement personnalisable.
-- Prise en charge multilingue.
+![Paramètres](./image/Paramètres.png) 
+- Interface du Guide des Programmes via Free Télécom.
+![EPG](./image/EPG.png) 
+- Informations sur le Programme en Cours (via Free Télécom).
+![Lancement_Chaine](./image/Lancement_Chaine.png)  
   
 ## Prérequis  
   
