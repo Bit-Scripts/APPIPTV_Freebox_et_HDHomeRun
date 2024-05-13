@@ -7,7 +7,7 @@ import requests
 from PyQt6 import QtWidgets
 from PyQt6.QtGui import QPixmap, QColor, QPalette, QIcon, QPainter
 from PyQt6.QtCore import Qt, QObject, QSize, QEvent, pyqtSignal, QPropertyAnimation, QEasingCurve, QTimer, QThread
-from PyQt6.QtWidgets import QTableWidget, QMessageBox, QDialog, QLineEdit, QPushButton, QCheckBox, QTableWidgetItem, QApplication, QMainWindow, QStackedWidget, QVBoxLayout, QScrollArea, QWidget, QGridLayout, QToolButton, QSplitter, QHBoxLayout, QLabel
+from PyQt6.QtWidgets import QProgressBar, QSplashScreen, QMessageBox, QDialog, QLineEdit, QPushButton, QCheckBox, QTableWidgetItem, QApplication, QMainWindow, QStackedWidget, QVBoxLayout, QScrollArea, QWidget, QGridLayout, QToolButton, QSplitter, QHBoxLayout, QLabel
 import vlc
 from io import BytesIO
 from functools import lru_cache
@@ -597,10 +597,20 @@ class SettingsDialog(QDialog):
     def __init__(self, config, parent=None):
         super().__init__(parent)
         self.setGeometry(400, 400, 400, 100)
+        self.centerWindow()
         self.config = config
         self.setWindowTitle("Configuration")
         self.setup_ui()
 
+    def centerWindow(self):
+        # Obtenir la taille de l'écran depuis l'application
+        screen = QApplication.primaryScreen().geometry()
+        windowSize = self.geometry()  # Obtient la taille de la fenêtre courante
+        # Calculer la position x et y pour centrer la fenêtre
+        x = int((screen.width() - windowSize.width()) / 2)
+        y = int((screen.height() - windowSize.height()) / 2)
+        self.setGeometry(x, y, windowSize.width(), windowSize.height())
+    
     def setup_ui(self):
         layout = QVBoxLayout(self)
         
@@ -650,6 +660,7 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("App IPTV")
         self.setGeometry(100, 100, 1200, 800)
+        self.centerWindow()
         
         # Réglages et configurations
         self.config = load_config()    
@@ -731,6 +742,15 @@ class MainWindow(QMainWindow):
         
         self.initUI()
         self.setupClock()
+
+    def centerWindow(self):
+        # Obtenir la taille de l'écran depuis l'application
+        screen = QApplication.primaryScreen().geometry()
+        windowSize = self.geometry()  # Obtient la taille de la fenêtre courante
+        # Calculer la position x et y pour centrer la fenêtre
+        x = int((screen.width() - windowSize.width()) / 2)
+        y = int((screen.height() - windowSize.height()) / 2)
+        self.setGeometry(x, y, windowSize.width(), windowSize.height())
 
     def setup_ui(self):
         # Bouton de configuration
@@ -1068,9 +1088,6 @@ class MainWindow(QMainWindow):
             # Étape 4: Supprimer le widget
             self.epg_table.deleteLater()
             self.epg_table = None
-            
-            # Nettoyer le layout qui contenait le widget si nécessaire
-            self.epg_table.widget().deleteLater()
 
     def togglePlayPause(self):
         if self.isPlaying:
@@ -1407,10 +1424,33 @@ class MainWindow(QMainWindow):
 
         return program_name, program_desc, program_picture_url, program_start_date, program_duration
 
-if __name__ == "__main__":
-    os.environ["QT_QPA_PLATFORM"] = "xcb"
-    app = QApplication([])
-    mainWindow = MainWindow()
-    mainWindow.show()
+class CustomSplashScreen(QSplashScreen):
+    def __init__(self, pixmap, *args, **kwargs):
+        super(CustomSplashScreen, self).__init__(pixmap, *args, **kwargs)
+        self.progressBar = QProgressBar(self)
+        self.progressBar.setGeometry(100, 350, 500, 20)  # Ajuster la position et la taille
 
-    app.exec()
+    def setProgress(self, value):
+        self.progressBar.setValue(value)
+        QApplication.instance().processEvents()
+
+def main():
+    app = QApplication(sys.argv)
+    splash_pix = QPixmap('./image/splash_screen.png')
+    splash = CustomSplashScreen(splash_pix)
+    splash.show()
+
+    # Simuler le chargement de l'application
+    for i in range(1, 101):
+        splash.setProgress(i)
+        time.sleep(0.03)  # Simuler le temps de chargement
+
+    mainWindow = MainWindow()  # Supposons que vous avez une fenêtre principale
+    mainWindow.show()
+    splash.finish(mainWindow)
+
+    sys.exit(app.exec())
+
+if __name__ == '__main__':
+    os.environ["QT_QPA_PLATFORM"] = "xcb"
+    main()

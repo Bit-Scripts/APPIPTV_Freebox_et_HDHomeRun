@@ -1,1 +1,3 @@
 .lprof/
+build/
+dist/
