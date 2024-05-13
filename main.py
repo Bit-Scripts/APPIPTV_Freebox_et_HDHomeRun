@@ -16,13 +16,27 @@ import platform
 import logging
 from logging.handlers import RotatingFileHandler
 
+if getattr(sys, 'frozen', False):
+    # If the application is run as a bundle, the PyInstaller bootloader
+    # extends the sys module by a flag frozen=True and sets the app 
+    # path into variable _MEIPASS'.
+    application_path = sys._MEIPASS
+else:
+    application_path = os.path.dirname(os.path.abspath(__file__))
+
 # Définir le répertoire de base des logs selon le système d'exploitation
 if platform.system() == "Windows":
     log_directory = "C:\\ProgramData\\IPTVAPP\\Logs"
+    # Set environment variables
+    os.environ['VLC_PLUGIN_PATH'] = 'C:·\\Program Files\\VideoLAN\\VLC\\plugins'
 elif platform.system() == "Linux":
     log_directory = os.path.expanduser("~/.local/share/IPTVAPP/logs")
+    # Set environment variables
+    os.environ['VLC_PLUGIN_PATH'] = '/usr/lib/x86_64-linux-gnu/vlc/plugins'
 elif platform.system() == "Darwin":  # macOS
     log_directory = os.path.expanduser("~/Library/Logs/IPTVAPP")
+    # Set environment variables
+    os.environ['VLC_PLUGIN_PATH'] = '/Applications/VLC.app/Contents/MacOS/plugins'
 else:
     print("Système d'Exploitation Inconnu, utilisation du répertoire temporaire")
     log_directory = "/tmp"  # Utiliser un répertoire temporaire comme secours
@@ -207,13 +221,12 @@ class DataLoadThread(QThread):
 
     def get_channel_icon(self, channel_name):
         sanitized_name = channel_name.replace(" ", "_").replace("-", "_").replace("'", "")
-        script_dir = os.path.dirname(os.path.abspath(__file__))
         icon_formats = ['svg', 'png']
         for fmt in icon_formats:
-            icon_path = os.path.join(script_dir, 'logos', f'{sanitized_name}.{fmt}')
+            icon_path = os.path.join(application_path, 'logos', f'{sanitized_name}.{fmt}')
             if os.path.exists(icon_path):
                 return icon_path
-        return os.path.join(script_dir, 'image', 'missing_icon.png')
+        return os.path.join(application_path, 'image', 'missing_icon.png')
 
 class EPGTable(QtWidgets.QTableWidget):
     def __init__(self, parent=None):
@@ -420,7 +433,7 @@ class EPGTable(QtWidgets.QTableWidget):
 
         if logo_pixmap.isNull():
             logger.error(f"Failed to load image from {channel_icon_url}")
-            logo_pixmap = QPixmap('image/missing_icon.png')  # Chemin vers une image par défaut
+            logo_pixmap = QPixmap(os.path.join(application_path, 'image/missing_icon.png'))  # Chemin vers une image par défaut
         
         logo_item.setPixmap(logo_pixmap.scaled(50, 50, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
         logo_item.setAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignCenter)
@@ -666,12 +679,9 @@ class MainWindow(QMainWindow):
         self.config = load_config()    
         self.hdhomerun_url = self.config.get("hdhomerun_url")    
         self.setup_ui()
-        
-        # Obtenir le chemin du répertoire du script en cours
-        script_dir = os.path.dirname(os.path.abspath(__file__))
 
         # Joindre le chemin du répertoire du script avec le nom du fichier image
-        window_icon_path = os.path.join(script_dir, "image", "missing_icon.png")
+        window_icon_path = os.path.join(application_path, "image", "missing_icon.png")
         
         # Charger l'icône de fenêtre
         window_icon = QIcon(window_icon_path)
@@ -826,7 +836,7 @@ class MainWindow(QMainWindow):
                     # Ajouter le tuple à la liste
                     ordered_uuids.append((channel_number, channel_name, icon_path, uuid))
                 if channel_name == "France 3" and channel_number != 301:
-                    ordered_uuids.append(("3", channel_name, 'logos/France_3.png', uuid))
+                    ordered_uuids.append(("3", channel_name, os.path.join(application_path, 'logos/France_3.png'), uuid))
                     
             ordered_uuids = sorted(ordered_uuids, key=lambda x: int(x[0]))
             return ordered_uuids
@@ -852,11 +862,11 @@ class MainWindow(QMainWindow):
         # Charger le logo de la chaîne
         channel_logo = QLabel(self)
         sanitized_name = current_channel_name.replace(" ", "_").replace("-", "_").replace("'", "")
-        logo_path = f'logos/{sanitized_name}.png'
+        logo_path = os.path.join(application_path, f'logos/{sanitized_name}.png')
         if os.path.exists(logo_path):
             pixmap = QPixmap(logo_path)
         else:
-            pixmap = QPixmap('image/missing_icon.png')
+            pixmap = QPixmap(os.path.join(application_path, 'image/missing_icon.png'))
         pixmap_resized = QPixmap(pixmap).scaled(125,125, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
         channel_logo.setPixmap(pixmap_resized)
         channel_logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -1209,12 +1219,12 @@ class MainWindow(QMainWindow):
         sanitized_name = channel_name.replace(" ", "_").replace("-", "_").replace("'", "")
         icon_formats = ['svg', 'png']
         for fmt in icon_formats:
-            icon_path = os.path.join('logos', f'{sanitized_name}.{fmt}')
+            icon_path = os.path.join(application_path, 'logos', f'{sanitized_name}.{fmt}')
             if os.path.exists(icon_path):
                 return icon_path
 
         # Fallback to a generic icon
-        return 'image/missing_icon.png'
+        return os.path.join(application_path, 'image/missing_icon.png')
 
     def playStream(self, url, name):
         try:
@@ -1353,9 +1363,9 @@ class MainWindow(QMainWindow):
                 find = True
                 program_name, program_desc, program_picture_url, program_start_date, program_duration = self.get_current_program(uuid)
                 sanitized_name = channel_name.replace(" ", "_").replace("-", "_").replace("'", "")
-                icon_path = os.path.join('logos', f'{sanitized_name}.png')
+                icon_path = os.path.join(application_path, 'logos', f'{sanitized_name}.png')
                 if not icon_path:
-                    icon_path = 'image/missing_icon.png'
+                    icon_path = os.path.join(application_path, 'image/missing_icon.png')
                 has_service = channel_info.get('has_service', False)  # Par défaut False si non spécifié
                 has_abo = channel_info.get('has_abo', False)  # Par défaut False si non spécifié
                 available = channel_info.get('available', False)  # Par défaut False si non spécifié
@@ -1378,7 +1388,7 @@ class MainWindow(QMainWindow):
                 self.show_semitransparent_blur_widget(channel_name, program_name, program_desc, program_picture_url, icon_path, program_start_date, program_duration, has_service, has_abo, available)
         if not find:
             program_name, program_desc, program_picture_url, program_start_date, program_duration = self.get_default_program_details()
-            icon_path = 'image/missing_icon.png'
+            icon_path = os.path.join(application_path, 'image/missing_icon.png')
             self.show_semitransparent_blur_widget(channel_name, program_name, program_desc, program_picture_url, icon_path, program_start_date, program_duration, False, False, False)
                 
     # Fonction pour récupérer les informations sur le programme actuel d'une chaîne
@@ -1436,7 +1446,7 @@ class CustomSplashScreen(QSplashScreen):
 
 def main():
     app = QApplication(sys.argv)
-    splash_pix = QPixmap('./image/splash_screen.png')
+    splash_pix = QPixmap(os.path.join(application_path, './image/splash_screen.png'))
     splash = CustomSplashScreen(splash_pix)
     splash.show()
 
