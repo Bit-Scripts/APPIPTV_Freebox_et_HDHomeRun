@@ -719,10 +719,12 @@ class MainWindow(QMainWindow):
         self.videoframe.setPalette(self.palette)
 
         # Bind VLC to the video frame
-        if os.name == 'nt':  # Windows
+        if sys.platform == "win32":  # Windows
             self.player.set_hwnd(self.videoframe.winId())
-        elif os.name == 'posix':  # Linux and macOS
+        elif sys.platform == "linux":  # Linux
             self.player.set_xwindow(int(self.videoframe.winId()))
+        elif sys.platform == "darwin":  # MacOS
+            self.player.set_nsobject(int(self.videoframe.winId()))
             
         # Initialize error label
         self.error_label = QLabel("Channel not available", self)
@@ -1462,5 +1464,6 @@ def main():
     sys.exit(app.exec())
 
 if __name__ == '__main__':
-    os.environ["QT_QPA_PLATFORM"] = "xcb"
+    if platform.system() == "Linux":
+        os.environ["QT_QPA_PLATFORM"] = "xcb"
     main()
