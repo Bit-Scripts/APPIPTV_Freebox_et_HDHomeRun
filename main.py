@@ -15,6 +15,7 @@ import pytz
 import platform
 import logging
 from logging.handlers import RotatingFileHandler
+import qdarkstyle
 
 if getattr(sys, 'frozen', False):
     # If the application is run as a bundle, the PyInstaller bootloader
@@ -259,14 +260,19 @@ class EPGTable(QtWidgets.QTableWidget):
 
         # Style général du tableau
         self.setStyleSheet("""
+            * {
+                color: #dddddd;
+                background-color: #00000000;
+                border: none;
+            }
             QTableWidget {
                 gridline-color: #444444;
                 border: none;
-                color: white;
-                background-color: black;
+                color: #dddddd;
+                background-color: #00000000;
             }
             QTableWidget::item {
-                color: white;
+                color: #dddddd;
                 padding: 10px;
             }
         """)
@@ -345,9 +351,13 @@ class EPGTable(QtWidgets.QTableWidget):
         # Ajustement de 'margin-top' pour aligner le texte avec l'icône
         text = f"<span style='vertical-align: top; font-size: 12px; display: inline-block;'>{program_start.strftime('%H:%M')} {program.get('desc', '')}</span>"
         label = QLabel(f"{icon_html}{text}")
-        label.setMargin(2)  # Réduire la marge externe
+        label.setMargin(0)  # Réduire la marge externe
         label.setWordWrap(True)
         label.setStyleSheet("""
+            * {
+                color: #dddddd;
+                border: none;
+            }
             QLabel {
                 padding: 2px;          /* Réduire l'espacement interne */
                 text-align: left;      /* Alignement du texte */
@@ -377,8 +387,8 @@ class EPGTable(QtWidgets.QTableWidget):
             self.set_style_cells()
             
     def set_style_cells(self):
-        dark_color = QColor('#252525')
-        light_color = QColor('#202020')
+        dark_color = QColor('#152535')
+        light_color = QColor('#102030')
         text_color = QColor('#dddddd')
         for row in range(self.rowCount()):
             for col in range(self.columnCount()):
@@ -717,6 +727,14 @@ class MainWindow(QMainWindow):
         self.palette = QPalette()
         self.palette.setColor(QPalette.ColorRole.Window, QColor(0, 0, 0))
         self.videoframe.setPalette(self.palette)
+        self.videoframe.setStyleSheet("""
+            * {
+                color: white;
+                background-color: black;
+                border: none;
+            }
+        """
+        )
 
         # Bind VLC to the video frame
         if sys.platform == "win32":  # Windows
@@ -1448,6 +1466,9 @@ class CustomSplashScreen(QSplashScreen):
 
 def main():
     app = QApplication(sys.argv)
+    # Application du thème sombre
+    app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt6'))
+    
     splash_pix = QPixmap(os.path.join(application_path, './image/splash_screen.png'))
     splash = CustomSplashScreen(splash_pix)
     splash.show()

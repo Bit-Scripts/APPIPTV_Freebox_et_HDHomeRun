@@ -2,3 +2,4 @@ PyQt6
 requests
 python-vlc
 pytz
+qdarkstyle
