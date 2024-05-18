@@ -1,8 +1,8 @@
 ---
 name: Rapport de Bug
 about: Utilisez ce modèle pour signaler un bug.
-title: ''
-labels: ''
+title: "[BUG] Titre court et descriptif"
+labels: bug
 assignees: ''
 
 ---

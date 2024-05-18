@@ -1,8 +1,8 @@
 ---
 name: Demande de Fonctionnalité
 about: Suggérer une idée pour ce projet
-title: ''
-labels: ''
+title: "[FEATURE] Titre court et descriptif"
+labels: enhancement
 assignees: ''
 
 ---
