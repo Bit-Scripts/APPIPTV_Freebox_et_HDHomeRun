@@ -60,12 +60,6 @@ jobs:
       - name: Export VLC plugin path
         run: echo "VLC_PLUGIN_PATH=${{ matrix.vlc_path }}" >> $GITHUB_ENV
 
-      - name: List files (debugging step)
-        if: runner.os != 'Windows'
-        run: |
-          echo "Listing files in the repository:"
-          ls -R
-
       - name: Build with PyInstaller using spec file
         run: |
           pyinstaller ${{ matrix.spec_file }}
@@ -158,7 +152,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ env.UPLOAD_URL }}
-          asset_path: APPIPTV-Linux.zip
+          asset_path: ubuntu-latest-app/APPIPTV-Linux.zip
           asset_name: APPIPTV-Linux.zip
           asset_content_type: application/zip
 
@@ -168,7 +162,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ env.UPLOAD_URL }}
-          asset_path: APPIPTV-Windows.zip
+          asset_path: windows-latest-app/APPIPTV-Windows.zip
           asset_name: APPIPTV-Windows.zip
           asset_content_type: application/zip
 
@@ -178,6 +172,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ env.UPLOAD_URL }}
-          asset_path: APPIPTV-macOS.zip
+          asset_path: macos-latest-app/APPIPTV-macOS.zip
           asset_name: APPIPTV-macOS.zip
           asset_content_type: application/zip
