@@ -1,3 +1,6 @@
+[To English Version](./README-en.md)
+(Ici version française)
+
 # APPIPTV Freebox et HDHomeRun  
   
 ![Lancement Chaine](./assets/image/splash_screen_au_lancement.png)
