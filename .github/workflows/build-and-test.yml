@@ -1,6 +1,9 @@
-name: Build and Test Application
+name: Build and Release Application
 
-on: [push, pull_request, release]
+on:
+  push:
+    tags:
+      - 'v*.*.*'
 
 jobs:
   build:
@@ -36,8 +39,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
-          pip install pytest
-          pip install responses
 
       - name: Install VLC and xvfb on Linux
         if: matrix.os == 'ubuntu-latest'
@@ -58,12 +59,6 @@ jobs:
 
       - name: Export VLC plugin path
         run: echo "VLC_PLUGIN_PATH=${{ matrix.vlc_path }}" >> $GITHUB_ENV
-
-      - name: List files (debugging step)
-        if: runner.os != 'Windows'
-        run: |
-          echo "Listing files in the repository:"
-          ls -R
 
       - name: Build with PyInstaller using spec file
         run: |
@@ -97,36 +92,35 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ runner.os }}-app
-          path: |
-            dist/APPIPTV-Linux
-            dist/APPIPTV-Windows.exe
-            dist/*.dmg
+          name: ${{ matrix.os }}-app
+          path: dist/${{ matrix.output_name }}
 
   release:
-    runs-on: ubuntu-latest
     needs: build
+    runs-on: ubuntu-latest
     steps:
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Download Linux artifact
+      - name: Download Linux Artifacts
         uses: actions/download-artifact@v3
         with:
           name: ubuntu-latest-app
-          path: .
 
-      - name: Download Windows artifact
+      - name: Download Windows Artifacts
         uses: actions/download-artifact@v3
         with:
           name: windows-latest-app
-          path: .
 
-      - name: Download macOS artifact
+      - name: Download macOS Artifacts
         uses: actions/download-artifact@v3
         with:
           name: macos-latest-app
-          path: .
+
+      - name: List downloaded files (debugging step)
+        run: |
+          echo "Files in the current directory:"
+          ls -R
 
       - name: Create Release
         id: create_release
@@ -218,32 +212,36 @@ jobs:
 
             We hope you enjoy the improvements in this new version. Feel free to provide us with your feedback to continue enriching and improving the application.
 
-      - name: Upload Linux asset
+
+      - name: Save upload URL to environment
+        run: echo "UPLOAD_URL=${{ steps.create_release.outputs.upload_url }}" >> $GITHUB_ENV
+
+      - name: Upload Release Asset for Linux
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./APPIPTV-Linux
+          upload_url: ${{ env.UPLOAD_URL }}
+          asset_path: APPIPTV-Linux
           asset_name: APPIPTV-Linux
           asset_content_type: application/octet-stream
 
-      - name: Upload Windows asset
+      - name: Upload Release Asset for Windows
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./APPIPTV-Windows.exe
+          upload_url: ${{ env.UPLOAD_URL }}
+          asset_path: APPIPTV-Windows.exe
           asset_name: APPIPTV-Windows.exe
           asset_content_type: application/octet-stream
 
-      - name: Upload macOS asset
+      - name: Upload Release Asset for macOS
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./APPIPTV-macOS.dmg
+          upload_url: ${{ env.UPLOAD_URL }}
+          asset_path: APPIPTV-macOS.dmg
           asset_name: APPIPTV-macOS.dmg
           asset_content_type: application/octet-stream
