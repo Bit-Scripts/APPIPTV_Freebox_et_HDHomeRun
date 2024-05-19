@@ -1,3 +1,92 @@
+name: Build and Release Application
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            vlc_path: /usr/lib/x86_64-linux-gnu/vlc/plugins
+            spec_file: specs/main-linux.spec
+            output_name: APPIPTV-Linux
+          - os: windows-latest
+            vlc_path: C:\Program Files\VideoLAN\VLC\plugins
+            spec_file: specs/main-windows.spec
+            output_name: APPIPTV-Windows.exe
+          - os: macos-latest
+            vlc_path: /Applications/VLC.app/Contents/MacOS/plugins
+            spec_file: specs/main-macos.spec
+            output_name: APPIPTV-macOS.dmg
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.8
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Install VLC and xvfb on Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y vlc libxcb-cursor0 xvfb
+
+      - name: Install VLC on Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install vlc
+
+      - name: Install VLC and create-dmg on macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install --cask vlc
+          brew install create-dmg
+
+      - name: Export VLC plugin path
+        run: echo "VLC_PLUGIN_PATH=${{ matrix.vlc_path }}" >> $GITHUB_ENV
+
+      - name: Build with PyInstaller using spec file
+        run: |
+          pyinstaller ${{ matrix.spec_file }}
+
+      - name: Rename output files (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          mv dist/APPIPTV dist/${{ matrix.output_name }}
+
+      - name: Rename output files (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          mv dist/APPIPTV.exe dist/${{ matrix.output_name }}
+
+      - name: Create DMG file (macOS only)
+        if: matrix.os == 'macos-latest'
+        run: |
+          create-dmg \
+            --volname "APPIPTV-macOS" \
+            --volicon "assets/image/APPIPTVdmgicon.icns" \
+            --background "assets/image/APPIPTV-Background.png" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 128 \
+            --icon "APPIPTV.app" 100 150 \
+            --app-drop-link 500 150 \
+            "dist/${{ matrix.output_name }}" \
             "dist/APPIPTV.app"
 
       - name: Upload Artifacts
