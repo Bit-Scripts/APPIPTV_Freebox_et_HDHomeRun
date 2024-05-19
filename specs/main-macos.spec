@@ -49,6 +49,6 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='APPIPTV.app',
-    icon='../assets/image/missing_icon.png',
+    icon='../assets/image/missing_icon.icns',
     bundle_identifier=None,
 )
