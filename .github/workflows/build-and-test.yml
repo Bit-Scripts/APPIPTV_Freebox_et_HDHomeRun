@@ -1,9 +1,6 @@
-name: Build and Release Application
+name: Build and Test Application
 
-on:
-  push:
-    tags:
-      - 'v*.*.*'
+on: [push, pull_request, release]
 
 jobs:
   build:
@@ -39,6 +36,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
+          pip install pytest
+          pip install responses
 
       - name: Install VLC and xvfb on Linux
         if: matrix.os == 'ubuntu-latest'
@@ -59,6 +58,12 @@ jobs:
 
       - name: Export VLC plugin path
         run: echo "VLC_PLUGIN_PATH=${{ matrix.vlc_path }}" >> $GITHUB_ENV
+
+      - name: List files (debugging step)
+        if: runner.os != 'Windows'
+        run: |
+          echo "Listing files in the repository:"
+          ls -R
 
       - name: Build with PyInstaller using spec file
         run: |
@@ -92,37 +97,38 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ matrix.os }}-app
-          path: dist/${{ matrix.output_name }}
+          name: ${{ runner.os }}-app
+          path: |
+            dist/APPIPTV-Linux
+            dist/APPIPTV-Windows.exe
+            dist/*.dmg
 
   release:
-    needs: build
     runs-on: ubuntu-latest
+    needs: build
     steps:
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Download Linux Artifacts
+      - name: Download Linux artifact
         uses: actions/download-artifact@v3
         with:
           name: ubuntu-latest-app
+          path: .
 
-      - name: Download Windows Artifacts
+      - name: Download Windows artifact
         uses: actions/download-artifact@v3
         with:
           name: windows-latest-app
+          path: .
 
-      - name: Download macOS Artifacts
+      - name: Download macOS artifact
         uses: actions/download-artifact@v3
         with:
           name: macos-latest-app
+          path: .
 
-      - name: List downloaded files (debugging step)
-        run: |
-          echo "Files in the current directory:"
-          ls -R
-
-      - name: Create GitHub Release
+      - name: Create Release
         id: create_release
         uses: actions/create-release@v1
         env:
@@ -130,38 +136,114 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
+          body: |
+            ## Français
+            ### Version ${{ github.ref }} - Thème Sombre Bleuté par Défaut
 
-      - name: Save upload URL to environment
-        run: echo "UPLOAD_URL=${{ steps.create_release.outputs.upload_url }}" >> $GITHUB_ENV
+            Nous sommes ravis de présenter la version ${{ github.ref }} de notre application, qui introduit un thème sombre bleuté par défaut pour une meilleure lisibilité et une expérience utilisateur améliorée. Cette mise à jour comprend également une réorganisation et une optimisation de la structure du code pour une performance accrue.
 
-      - name: Upload Release Asset for Linux
+            **Installation facile :** Téléchargez le fichier, double-cliquez pour démarrer l'installation et suivez les instructions à l'écran. Assurez-vous que VLC est installé sur votre machine pour profiter pleinement des fonctionnalités de l'application.
+
+            **Dépendances nécessaires :**
+            L'application requiert VLC. Voici comment l'installer sur différentes plateformes :
+
+            - Ubuntu :
+            Utilisez apt pour installer VLC :
+            ```bash
+            sudo apt update
+            sudo apt install vlc
+            ```
+
+            - Windows :
+            Utilisez Chocolatey pour installer VLC :
+            ```bash
+            choco install vlc
+            ```
+
+            - macOS :
+            Installez VLC via Homebrew :
+            ```bash
+            brew install --cask vlc
+            ```
+
+            **Pour les utilisateurs de macOS :** Si vous recevez un message indiquant que le fichier est endommagé, désactivez temporairement Gatekeeper avec la commande suivante (utilisez cette commande avec prudence) :
+            ```bash
+            sudo spctl --master-disable
+            ```
+            Après l'installation et une fois vérifié que l'application fonctionne correctement, réactivez Gatekeeper pour protéger votre système :
+            ```bash
+            sudo spctl --master-enable
+            ```
+
+            Nous espérons que vous apprécierez les améliorations apportées dans cette nouvelle version. N'hésitez pas à nous faire part de vos retours pour continuer à enrichir et améliorer l'application.
+
+            ## English
+            ### Version ${{ github.ref }} - Default Bluish Dark Theme
+
+            We are excited to present version ${{ github.ref }} of our application, which introduces a default bluish dark theme for better readability and an enhanced user experience. This update also includes a reorganization and optimization of the code structure for increased performance.
+
+            **Easy Installation:** Download the file, double-click to start the installation, and follow the on-screen instructions. Make sure VLC is installed on your machine to fully enjoy the application's features.
+
+            **Required Dependencies:**
+            The application requires VLC. Here’s how to install it on different platforms:
+
+            - Ubuntu:
+            Install VLC using apt:
+            ```bash
+            sudo apt update
+            sudo apt install vlc
+            ```
+
+            - Windows:
+            Install VLC using Chocolatey:
+            ```bash
+            choco install vlc
+            ```
+
+            - macOS:
+            Install VLC via Homebrew:
+            ```bash
+            brew install --cask vlc
+            ```
+
+            **For macOS Users:** If you receive a message stating that the file is damaged, temporarily disable Gatekeeper with the following command (use this command with caution):
+
+            ```bash
+            sudo spctl --master-disable
+            ```
+            After installation and verifying that the application works correctly, re-enable Gatekeeper to protect your system:
+            ```bash
+            sudo spctl --master-enable
+            ```
+
+            We hope you enjoy the improvements in this new version. Feel free to provide us with your feedback to continue enriching and improving the application.
+
+      - name: Upload Linux asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ env.UPLOAD_URL }}
-          asset_path: APPIPTV-Linux
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./APPIPTV-Linux
           asset_name: APPIPTV-Linux
           asset_content_type: application/octet-stream
 
-      - name: Upload Release Asset for Windows
+      - name: Upload Windows asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ env.UPLOAD_URL }}
-          asset_path: APPIPTV-Windows.exe
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./APPIPTV-Windows.exe
           asset_name: APPIPTV-Windows.exe
           asset_content_type: application/octet-stream
 
-      - name: Upload Release Asset for macOS
+      - name: Upload macOS asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ env.UPLOAD_URL }}
-          asset_path: APPIPTV-macOS.dmg
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./APPIPTV-macOS.dmg
           asset_name: APPIPTV-macOS.dmg
           asset_content_type: application/octet-stream
