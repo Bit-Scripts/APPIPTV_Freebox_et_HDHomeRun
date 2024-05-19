@@ -1,20 +1,24 @@
 ---
 name: Demande de Fonctionnalité
-about: Suggérer une idée pour ce projet
-title: "[FEATURE] Titre court et descriptif"
-labels: enhancement
+about: Proposer une nouvelle fonctionnalité pour ce projet
+title: "[Feature Request] Votre titre significatif ici"
+labels: 'enhancement'
 assignees: ''
 
 ---
 
-## Est-ce que votre demande de fonctionnalité est liée à un problème ? Veuillez décrire.
-**Une description claire et concise de quel est le problème. Ex. Je suis toujours frustré quand [...]**
+## Description de la fonctionnalité souhaitée
 
-## Décrivez la solution que vous souhaitez
-**Une description claire et concise de ce que vous voulez qu'il arrive.**
+**Décrivez la fonctionnalité que vous aimeriez voir ajoutée au projet.**
 
-## Décrivez les alternatives que vous avez considérées
-**Une description claire et concise de toutes les solutions ou fonctionnalités alternatives que vous avez considérées.**
+## Pourquoi est-ce utile ?
 
-## Contexte supplémentaire
-**Ajoutez ici tout autre contexte ou captures d'écran concernant la demande de fonctionnalité.**
+**Expliquez pourquoi cette fonctionnalité serait utile pour les utilisateurs du projet.**
+
+## Comment cela devrait-il fonctionner ?
+
+**Décrivez comment vous imaginez que cette fonctionnalité devrait fonctionner.**
+
+## Informations supplémentaires
+
+**Ajoutez ici toute autre information pertinente ou des exemples.**
