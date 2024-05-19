@@ -42,7 +42,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y vlc
+          sudo apt-get install -y vlc libxcb-cursor0
 
       - name: Install VLC on Windows
         if: matrix.os == 'windows-latest'
@@ -85,8 +85,6 @@ jobs:
       - name: Create DMG file (macOS only)
         if: matrix.os == 'macos-latest'
         run: |
-          mkdir -p dist/APPIPTV.app/Contents/MacOS
-          cp dist/APPIPTV dist/APPIPTV.app/Contents/MacOS/APPIPTV
           create-dmg \
             --volname "APPIPTV-macOS" \
             --volicon "assets/image/APPIPTVdmgicon.icns" \
@@ -97,7 +95,7 @@ jobs:
             --icon "APPIPTV.app" 100 150 \
             --app-drop-link 500 150 \
             "dist/${{ matrix.output_name }}" \
-            "dist"
+            "dist/APPIPTV.app"
 
       - name: Test application (Linux)
         if: matrix.os == 'ubuntu-latest'
