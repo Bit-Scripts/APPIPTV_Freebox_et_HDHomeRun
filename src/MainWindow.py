@@ -1,9 +1,10 @@
-import datetime
-import os
 import sys
+import os
+import requests
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
 import time
 import json
-import requests
+import datetime
 from PyQt6 import QtWidgets
 from PyQt6.QtGui import QPixmap, QColor, QPalette, QIcon
 from PyQt6.QtCore import Qt, QSize, QEvent, QPropertyAnimation, QEasingCurve, QTimer
