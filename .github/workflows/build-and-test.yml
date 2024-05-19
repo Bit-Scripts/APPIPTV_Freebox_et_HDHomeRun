@@ -109,7 +109,6 @@ jobs:
         run: |
           xvfb-run --auto-servernum --server-args='-screen 0 1024x768x24' ./dist/APPIPTV-Linux || echo "Application failed to run, but continuing..."
 
-      - name: Test
       - name: Test application (macOS)
         if: ${{ matrix.os == 'macos-latest' }} && ${{ env.RUN_TESTS != 'false' }}
         run: |
