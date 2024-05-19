@@ -38,11 +38,11 @@ jobs:
           pip install pyinstaller
           pip install pytest
 
-      - name: Install VLC on Linux
+      - name: Install VLC and xvfb on Linux
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y vlc libxcb-cursor0
+          sudo apt-get install -y vlc libxcb-cursor0 xvfb
 
       - name: Install VLC on Windows
         if: matrix.os == 'windows-latest'
@@ -100,7 +100,7 @@ jobs:
       - name: Test application (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          ./dist/APPIPTV-Linux
+          xvfb-run --auto-servernum --server-args='-screen 0 1024x768x24' ./dist/APPIPTV-Linux
 
       - name: Test application (macOS)
         if: matrix.os == 'macos-latest'
