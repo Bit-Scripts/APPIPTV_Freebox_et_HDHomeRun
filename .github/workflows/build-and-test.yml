@@ -1,0 +1,106 @@
+name: Build and Test Application
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            vlc_path: /usr/lib/x86_64-linux-gnu/vlc/plugins
+            spec_file: specs/main-linux.spec
+            output_name: APPIPTV-Linux
+          - os: windows-latest
+            vlc_path: C:\Program Files\VideoLAN\VLC\plugins
+            spec_file: specs/main-windows.spec
+            output_name: APPIPTV-Windows.exe
+          - os: macos-latest
+            vlc_path: /Applications/VLC.app/Contents/MacOS/plugins
+            spec_file: specs/main-macos.spec
+            output_name: APPIPTV-macOS.dmg
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Install VLC
+        run: |
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            sudo apt-get update
+            sudo apt-get install -y vlc
+          elif [[ "${{ runner.os }}" == "Windows" ]]; then
+            choco install vlc
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            brew install --cask vlc
+            brew install create-dmg
+          fi
+
+      - name: Export VLC plugin path
+        run: echo "VLC_PLUGIN_PATH=${{ matrix.vlc_path }}" >> $GITHUB_ENV
+
+      - name: Run unit tests
+        run: |
+          pytest
+
+      - name: Build with PyInstaller using spec file
+        run: |
+          pyinstaller ${{ matrix.spec_file }}
+
+      - name: Rename output files (Linux and Windows)
+        if: matrix.os != 'macos-latest'
+        run: |
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            mv dist/APPIPTV dist/${{ matrix.output_name }}
+          elif [[ "${{ runner.os }}" == "Windows" ]]; then
+            mv dist/APPIPTV.exe dist/${{ matrix.output_name }}
+          fi
+
+      - name: Create DMG file (macOS only)
+        if: matrix.os == 'macos-latest'
+        run: |
+          mkdir -p dist/APPIPTV.app/Contents/MacOS
+          cp dist/APPIPTV dist/APPIPTV.app/Contents/MacOS/APPIPTV
+          create-dmg \
+            --volname "APPIPTV-macOS" \
+            --volicon "assets/image/APPIPTVdmgicon.icns" \
+            --background "assets/image/APPIPTV-Background.png" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 128 \
+            --icon "APPIPTV.app" 100 150 \
+            --app-drop-link 500 150 \
+            "dist/${{ matrix.output_name }}" \
+            "dist"
+
+      - name: Test application
+        run: |
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            ./dist/APPIPTV-Linux
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            ./dist/APPIPTV.app/Contents/MacOS/APPIPTV
+          elif [[ "${{ runner.os }}" == "Windows" ]]; then
+            .\dist\APPIPTV-Windows.exe
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ runner.os }}-app
+          path: |
+            dist/APPIPTV-Linux
+            dist/APPIPTV-Windows.exe
+            dist/*.dmg
+
