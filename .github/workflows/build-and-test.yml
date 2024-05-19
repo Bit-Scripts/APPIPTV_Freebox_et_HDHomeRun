@@ -99,7 +99,8 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.os }}-app
-          path: dist/
+          path: |
+            dist/${{ matrix.output_name }}
 
   release:
     needs: build
@@ -109,21 +110,18 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download Linux Artifacts
-        if: matrix.os == 'ubuntu-latest'
         uses: actions/download-artifact@v3
         with:
           name: ubuntu-latest-app
           path: dist/
 
       - name: Download Windows Artifacts
-        if: matrix.os == 'windows-latest'
         uses: actions/download-artifact@v3
         with:
           name: windows-latest-app
           path: dist/
 
       - name: Download macOS Artifacts
-        if: matrix.os == 'macos-latest'
         uses: actions/download-artifact@v3
         with:
           name: macos-latest-app
