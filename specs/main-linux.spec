@@ -46,7 +46,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='assets/image/missing_icon.png',  # Chemin vers l'icône
+    icon='../assets/image/missing_icon.png',  # Chemin vers l'icône
 )
 
 
