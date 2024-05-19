@@ -40,12 +40,12 @@ jobs:
 
       - name: Install VLC
         run: |
-          if [[ "${{ runner.os }}" == "Linux" ]]; then
+          if [ "${{ runner.os }}" == "Linux" ]; then
             sudo apt-get update
             sudo apt-get install -y vlc
-          elif [[ "${{ runner.os }}" == "Windows" ]]; then
+          elif [ "${{ runner.os }}" == "Windows" ]; then
             choco install vlc
-          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+          elif [ "${{ runner.os }}" == "macOS" ]; then
             brew install --cask vlc
             brew install create-dmg
           fi
@@ -54,6 +54,7 @@ jobs:
         run: echo "VLC_PLUGIN_PATH=${{ matrix.vlc_path }}" >> $GITHUB_ENV
 
       - name: List files (debugging step)
+        if: runner.os != 'Windows'
         run: |
           echo "Listing files in the repository:"
           ls -R
@@ -66,14 +67,15 @@ jobs:
         run: |
           pyinstaller ${{ matrix.spec_file }}
 
-      - name: Rename output files (Linux and Windows)
-        if: matrix.os != 'macos-latest'
+      - name: Rename output files (Linux)
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          if [[ "${{ runner.os }}" == "Linux" ]]; then
-            mv dist/APPIPTV dist/${{ matrix.output_name }}
-          elif [[ "${{ runner.os }}" == "Windows" ]]; then
-            mv dist/APPIPTV.exe dist/${{ matrix.output_name }}
-          fi
+          mv dist/APPIPTV dist/${{ matrix.output_name }}
+
+      - name: Rename output files (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          mv dist/APPIPTV.exe dist/${{ matrix.output_name }}
 
       - name: Create DMG file (macOS only)
         if: matrix.os == 'macos-latest'
@@ -92,14 +94,20 @@ jobs:
             "dist/${{ matrix.output_name }}" \
             "dist"
 
-      - name: Test application
+      - name: Test application (Linux)
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          if [[ "${{ runner.os }}" == "Linux" ]]; then
-            ./dist/APPIPTV-Linux
-          elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            ./dist/APPIPTV.app/Contents/MacOS/APPIPTV
-          elif [[ "${{ runner.os }}" == "Windows" ]]; then
-            .\dist\APPIPTV-Windows.exe
+          ./dist/APPIPTV-Linux
+
+      - name: Test application (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          ./dist/APPIPTV.app/Contents/MacOS/APPIPTV
+
+      - name: Test application (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          .\dist\APPIPTV-Windows.exe
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
