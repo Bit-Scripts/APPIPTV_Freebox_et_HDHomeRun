@@ -142,7 +142,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ env.UPLOAD_URL }}
-          asset_path: ubuntu-latest-app/APPIPTV-Linux
+          asset_path: APPIPTV-Linux
           asset_name: APPIPTV-Linux
           asset_content_type: application/octet-stream
 
@@ -152,7 +152,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ env.UPLOAD_URL }}
-          asset_path: windows-latest-app/APPIPTV-Windows.exe
+          asset_path: APPIPTV-Windows.exe
           asset_name: APPIPTV-Windows.exe
           asset_content_type: application/octet-stream
 
@@ -162,6 +162,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ env.UPLOAD_URL }}
-          asset_path: macos-latest-app/APPIPTV-macOS.dmg
+          asset_path: APPIPTV-macOS.dmg
           asset_name: APPIPTV-macOS.dmg
           asset_content_type: application/octet-stream
