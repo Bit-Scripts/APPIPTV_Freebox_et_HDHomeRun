@@ -5,11 +5,16 @@ from PyInstaller.utils.hooks import exec_statement
 block_cipher = None  # Ajout si nécessaire pour 'cipher' dans PYZ
 
 a = Analysis(
-    ['main.py'],
+    ['../main.py'],
     pathex=['.'],
-    binaries=[],
-    datas=[('./image/*', './image/'), 
-        ('./logos/*', './logos/'),
+    binaries=[
+        ('C:\\Program Files\\VideoLAN\\VLC\\libvlc.dll', '.'),
+        ('C:\\Program Files\\VideoLAN\\VLC\\libvlccore.dll', '.'),
+        ('C:\\Program Files\\VideoLAN\\VLC\\plugins\\*', 'plugins'), 
+        ('..\\src\\*', '.\\src\\')
+    ],
+    datas=[('..\\assets\\image\\*', '.\\image\\'), 
+        ('..\\logos\\*', '.\\logos\\'),
     ],
     hiddenimports=['vlc'],
     hookspath=[],
@@ -41,7 +46,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='image/missing_icon.png',  # Chemin vers l'icône
+    icon='assets/image/missing_icon.png',  # Chemin vers l'icône
 )
 
 

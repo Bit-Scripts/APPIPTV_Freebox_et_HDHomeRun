@@ -1,3 +1,15 @@
+# .gitignore
 .lprof/
 build/
 dist/
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+db.sqlite3
+*.pyc
+*.tgz
+*.zip
+*.log
+*.tmp

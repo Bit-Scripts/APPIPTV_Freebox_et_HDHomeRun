@@ -2,11 +2,14 @@
 
 
 a = Analysis(
-    ['main.py'],
+    ['../main.py'],
     pathex=['.'],
-    binaries=[],
-    datas=[('./image/*', './image/'), 
-        ('./logos/*', './logos/'),
+    binaries=[
+        ('/Applications/VLC.app/Contents/MacOS/lib/*', 'lib/'),
+        ('/Applications/VLC.app/Contents/MacOS/plugins/*', 'plugins/'),
+        ('../src/*', './src/')],
+    datas=[('../assets/image/*', './assets/image/'), 
+        ('../assets/logos/*', './assets/logos/'),
     ],
     hiddenimports=['vlc'],
     hookspath=[],
@@ -46,6 +49,6 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='APPIPTV.app',
-    icon='image/missing_icon.png',
+    icon='assets/image/missing_icon.png',
     bundle_identifier=None,
 )
