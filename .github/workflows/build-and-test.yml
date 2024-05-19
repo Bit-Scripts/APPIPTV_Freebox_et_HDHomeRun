@@ -99,8 +99,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.os }}-app
-          path: |
-            dist/${{ matrix.output_name }}
+          path: dist/
 
   release:
     needs: build
@@ -113,34 +112,16 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: ubuntu-latest-app
-          path: dist/
 
       - name: Download Windows Artifacts
         uses: actions/download-artifact@v3
         with:
           name: windows-latest-app
-          path: dist/
 
       - name: Download macOS Artifacts
         uses: actions/download-artifact@v3
         with:
           name: macos-latest-app
-          path: dist/
-
-      - name: Extract Linux Artifacts
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          unzip dist/ubuntu-latest-app.zip -d dist/
-
-      - name: Extract Windows Artifacts
-        if: matrix.os == 'windows-latest'
-        run: |
-          powershell -Command "Expand-Archive -Path dist\windows-latest-app.zip -DestinationPath dist"
-
-      - name: Extract macOS Artifacts
-        if: matrix.os == 'macos-latest'
-        run: |
-          unzip dist/macos-latest-app.zip -d dist/
 
       - name: Create GitHub Release
         id: create_release
@@ -154,7 +135,6 @@ jobs:
           prerelease: false
 
       - name: Upload Release Asset for Linux
-        if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -165,7 +145,6 @@ jobs:
           asset_content_type: application/octet-stream
 
       - name: Upload Release Asset for Windows
-        if: matrix.os == 'windows-latest'
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -176,7 +155,6 @@ jobs:
           asset_content_type: application/octet-stream
 
       - name: Upload Release Asset for macOS
-        if: matrix.os == 'macos-latest'
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
