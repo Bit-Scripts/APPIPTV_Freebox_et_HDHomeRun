@@ -95,7 +95,7 @@ This project is licensed under the GNU General Public License v3.0. See the [LIC
   
 ## Contribution
   
-Contributions are highly encouraged and greatly appreciated. If you would like to contribute, you can: 
+Contributions are highly encouraged and every contribution is appreciated. If you wish to contribute, please refer to the [CONTRIBUTING.md](.github/CONTRIBUTING.md) file for detailed guidelines. 
   
 - **Report Bugs**: Use the [issues](https://github.com/Bit-Scripts/APPIPTV_Freebox_et_HDHomeRun/issues) to report bugs.  
 - **Propose Features**: You can also propose new features through the [issues](https://github.com/Bit-Scripts/APPIPTV_Freebox_et_HDHomeRun/issues).  
