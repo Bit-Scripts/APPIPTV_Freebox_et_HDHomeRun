@@ -98,11 +98,9 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ runner.os }}-app
+          name: ${{ matrix.os }}-app
           path: |
-            dist/APPIPTV-Linux
-            dist/APPIPTV-Windows.exe
-            dist/*.dmg
+            dist/${{ matrix.output_name }}
 
   release:
     needs: build
@@ -111,11 +109,38 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Download Artifacts
+      - name: Download Linux Artifacts
         uses: actions/download-artifact@v3
         with:
-          name: ${{ matrix.os }}-app
+          name: Linux-app
           path: dist/
+
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: Windows-app
+          path: dist/
+
+      - name: Download macOS Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: macOS-app
+          path: dist/
+
+      - name: Extract Linux Artifacts
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          unzip dist/Linux-app.zip -d dist/
+
+      - name: Extract Windows Artifacts
+        if: matrix.os == 'windows-latest'
+        run: |
+          powershell -Command "Expand-Archive -Path dist\Windows-app.zip -DestinationPath dist"
+
+      - name: Extract macOS Artifacts
+        if: matrix.os == 'macos-latest'
+        run: |
+          unzip dist/macos-app.zip -d dist/
 
       - name: Create GitHub Release
         id: create_release
