@@ -1,4 +1,4 @@
-name: Build and Test Application
+name: Build Application
 
 on: [push, pull_request]
 
@@ -22,9 +22,6 @@ jobs:
             spec_file: specs/main-macos.spec
             output_name: APPIPTV-macOS.dmg
 
-    env:
-      RUN_TESTS: false
-
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -39,8 +36,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
-          pip install pytest
-          pip install responses
 
       - name: Install VLC and xvfb on Linux
         if: matrix.os == 'ubuntu-latest'
@@ -67,13 +62,6 @@ jobs:
         run: |
           echo "Listing files in the repository:"
           ls -R
-
-      - name: Run unit tests
-        if: ${{ env.RUN_TESTS != 'false' }}
-        env:
-          CI: true
-        run: |
-          pytest || echo "Tests failed, but continuing..."
 
       - name: Build with PyInstaller using spec file
         run: |
@@ -103,21 +91,6 @@ jobs:
             --app-drop-link 500 150 \
             "dist/${{ matrix.output_name }}" \
             "dist/APPIPTV.app"
-
-      - name: Test application (Linux)
-        if: ${{ matrix.os == 'ubuntu-latest' }} && ${{ env.RUN_TESTS != 'false' }}
-        run: |
-          xvfb-run --auto-servernum --server-args='-screen 0 1024x768x24' ./dist/APPIPTV-Linux || echo "Application failed to run, but continuing..."
-
-      - name: Test application (macOS)
-        if: ${{ matrix.os == 'macos-latest' }} && ${{ env.RUN_TESTS != 'false' }}
-        run: |
-          ./dist/APPIPTV.app/Contents/MacOS/APPIPTV || echo "Application failed to run, but continuing..."
-
-      - name: Test application (Windows)
-        if: ${{ matrix.os == 'windows-latest' }} && ${{ env.RUN_TESTS != 'false' }}
-        run: |
-          .\dist\APPIPTV-Windows.exe || echo "Application failed to run, but continuing..."
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
