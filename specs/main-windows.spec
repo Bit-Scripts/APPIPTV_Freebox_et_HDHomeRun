@@ -13,8 +13,8 @@ a = Analysis(
         ('C:\\Program Files\\VideoLAN\\VLC\\plugins\\*', 'plugins'), 
         ('..\\src\\*', '.\\src\\')
     ],
-    datas=[('..\\assets\\image\\*', '.\\image\\'), 
-        ('..\\logos\\*', '.\\logos\\'),
+    datas=[('..\\assets\\image\\*', '.\\assets\\image\\'), 
+        ('..\\assets\\logos\\*', '.\\assets\\logos\\'),
     ],
     hiddenimports=['vlc'],
     hookspath=[],
