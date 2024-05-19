@@ -132,6 +132,18 @@ jobs:
         with:
           name: macos-latest-app
 
+      - name: Unzip Linux Artifact
+        if: runner.os == 'Linux'
+        run: unzip ubuntu-latest-app/APPIPTV-Linux.zip -d ubuntu-latest-app/
+
+      - name: Unzip Windows Artifact
+        if: runner.os == 'Linux'
+        run: unzip windows-latest-app/APPIPTV-Windows.zip -d windows-latest-app/
+
+      - name: Unzip macOS Artifact
+        if: runner.os == 'Linux'
+        run: unzip macos-latest-app/APPIPTV-macOS.zip -d macos-latest-app/
+
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
