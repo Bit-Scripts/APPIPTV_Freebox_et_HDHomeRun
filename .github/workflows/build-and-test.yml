@@ -38,17 +38,22 @@ jobs:
           pip install pyinstaller
           pip install pytest
 
-      - name: Install VLC
+      - name: Install VLC on Linux
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          if [ "${{ runner.os }}" == "Linux" ]; then
-            sudo apt-get update
-            sudo apt-get install -y vlc
-          elif [ "${{ runner.os }}" == "Windows" ]; then
-            choco install vlc
-          elif [ "${{ runner.os }}" == "macOS" ]; then
-            brew install --cask vlc
-            brew install create-dmg
-          fi
+          sudo apt-get update
+          sudo apt-get install -y vlc
+
+      - name: Install VLC on Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install vlc
+
+      - name: Install VLC and create-dmg on macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install --cask vlc
+          brew install create-dmg
 
       - name: Export VLC plugin path
         run: echo "VLC_PLUGIN_PATH=${{ matrix.vlc_path }}" >> $GITHUB_ENV
