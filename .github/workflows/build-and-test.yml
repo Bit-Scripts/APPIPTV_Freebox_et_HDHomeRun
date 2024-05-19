@@ -99,8 +99,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.os }}-app
-          path: |
-            dist/${{ matrix.output_name }}
+          path: dist/
 
   release:
     needs: build
@@ -110,37 +109,40 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download Linux Artifacts
+        if: matrix.os == 'ubuntu-latest'
         uses: actions/download-artifact@v3
         with:
-          name: Linux-app
+          name: ubuntu-latest-app
           path: dist/
 
       - name: Download Windows Artifacts
+        if: matrix.os == 'windows-latest'
         uses: actions/download-artifact@v3
         with:
-          name: Windows-app
+          name: windows-latest-app
           path: dist/
 
       - name: Download macOS Artifacts
+        if: matrix.os == 'macos-latest'
         uses: actions/download-artifact@v3
         with:
-          name: macOS-app
+          name: macos-latest-app
           path: dist/
 
       - name: Extract Linux Artifacts
         if: matrix.os == 'ubuntu-latest'
         run: |
-          unzip dist/Linux-app.zip -d dist/
+          unzip dist/ubuntu-latest-app.zip -d dist/
 
       - name: Extract Windows Artifacts
         if: matrix.os == 'windows-latest'
         run: |
-          powershell -Command "Expand-Archive -Path dist\Windows-app.zip -DestinationPath dist"
+          powershell -Command "Expand-Archive -Path dist\windows-latest-app.zip -DestinationPath dist"
 
       - name: Extract macOS Artifacts
         if: matrix.os == 'macos-latest'
         run: |
-          unzip dist/macos-app.zip -d dist/
+          unzip dist/macos-latest-app.zip -d dist/
 
       - name: Create GitHub Release
         id: create_release
