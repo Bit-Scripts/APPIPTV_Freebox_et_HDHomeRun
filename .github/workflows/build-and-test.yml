@@ -164,8 +164,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ env.UPLOAD_URL }}
-          asset_path: ubuntu-latest-app/APPIPTV-Linux.zip
-          asset_name: APPIPTV-Linux.zip
+          asset_path: ubuntu-latest-app/APPIPTV-Linux
+          asset_name: APPIPTV-Linux
           asset_content_type: application/zip
 
       - name: Upload Release Asset for Windows
@@ -174,8 +174,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ env.UPLOAD_URL }}
-          asset_path: windows-latest-app/APPIPTV-Windows.zip
-          asset_name: APPIPTV-Windows.zip
+          asset_path: windows-latest-app/APPIPTV-Windows
+          asset_name: APPIPTV-Windows
           asset_content_type: application/zip
 
       - name: Upload Release Asset for macOS
@@ -184,6 +184,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ env.UPLOAD_URL }}
-          asset_path: macos-latest-app/APPIPTV-macOS.zip
-          asset_name: APPIPTV-macOS.zip
+          asset_path: macos-latest-app/APPIPTV-macOS
+          asset_name: APPIPTV-macOS
           asset_content_type: application/zip
