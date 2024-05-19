@@ -6,7 +6,7 @@
 ![Lancement Chaine](./assets/image/splash_screen_au_lancement.png)
 ![Liste des Chaines](./assets/image/Chaines.png)
 ![Lancement Chaine](./assets/image/Lancement_Chaine.png)
-![Lancement Chaine](./assets/image/image_et_Chaines.png)
+![Lancement Chaine](./assets/image/Image_et_Chaines.png)
   
 IPTVAPP est une application de streaming IPTV avec une interface utilisateur graphique basée sur PyQt6, permettant de visualiser des programmes TV en direct via la bibliothèque de VLC media player en Python.  
   
