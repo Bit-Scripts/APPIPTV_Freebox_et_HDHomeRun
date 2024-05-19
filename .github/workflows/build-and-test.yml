@@ -53,6 +53,11 @@ jobs:
       - name: Export VLC plugin path
         run: echo "VLC_PLUGIN_PATH=${{ matrix.vlc_path }}" >> $GITHUB_ENV
 
+      - name: List files (debugging step)
+        run: |
+          echo "Listing files in the repository:"
+          ls -R
+
       - name: Run unit tests
         run: |
           pytest
