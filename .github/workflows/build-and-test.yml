@@ -24,10 +24,10 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: 3.8
 
@@ -96,11 +96,10 @@ jobs:
             .\dist\APPIPTV-Windows.exe
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ${{ runner.os }}-app
           path: |
             dist/APPIPTV-Linux
             dist/APPIPTV-Windows.exe
             dist/*.dmg
-
