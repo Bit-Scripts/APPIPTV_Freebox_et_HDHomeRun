@@ -105,17 +105,18 @@ jobs:
             "dist/APPIPTV.app"
 
       - name: Test application (Linux)
-        if: ${{ env.RUN_TESTS != 'false' }} && matrix.os == 'ubuntu-latest'
+        if: ${{ matrix.os == 'ubuntu-latest' }} && ${{ env.RUN_TESTS != 'false' }}
         run: |
           xvfb-run --auto-servernum --server-args='-screen 0 1024x768x24' ./dist/APPIPTV-Linux || echo "Application failed to run, but continuing..."
 
+      - name: Test
       - name: Test application (macOS)
-        if: ${{ env.RUN_TESTS != 'false' }} && matrix.os == 'macos-latest'
+        if: ${{ matrix.os == 'macos-latest' }} && ${{ env.RUN_TESTS != 'false' }}
         run: |
           ./dist/APPIPTV.app/Contents/MacOS/APPIPTV || echo "Application failed to run, but continuing..."
 
       - name: Test application (Windows)
-        if: ${{ env.RUN_TESTS != 'false' }} && matrix.os == 'windows-latest'
+        if: ${{ matrix.os == 'windows-latest' }} && ${{ env.RUN_TESTS != 'false' }}
         run: |
           .\dist\APPIPTV-Windows.exe || echo "Application failed to run, but continuing..."
 
