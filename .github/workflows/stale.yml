@@ -1,0 +1,43 @@
+name: "Close Stale Issues and PRs"
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Ce workflow s'exécute tous les jours à minuit
+  workflow_dispatch:
+    # Permet de déclencher le workflow manuellement depuis l'onglet Actions
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close Stale Issues
+        uses: actions/stale@v9.0.0
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          days-before-stale: 10
+          days-before-close: 7
+          stale-issue-message: >
+            Cette issue a été marquée comme périmée en raison de son inactivité.
+            Si aucune activité n'est détectée dans les 7 prochains jours, elle sera fermée.
+            This issue is stale because it has been open 10 days with no activity.
+            If no activity is detected in the next 7 days, it will be closed.
+          stale-pr-message: >
+            Cette pull request a été marquée comme périmée en raison de son inactivité.
+            Si aucune activité n'est détectée dans les 7 prochains jours, elle sera fermée.
+            This pull request is stale because it has been open 10 days with no activity.
+            If no activity is detected in the next 7 days, it will be closed.
+          close-issue-message: >
+            Cette issue a été fermée en raison de son inactivité prolongée.
+            Si vous pensez que cela est une erreur, veuillez la rouvrir ou créer une nouvelle issue.
+            This issue was closed due to prolonged inactivity.
+            If you believe this is a mistake, please reopen it or create a new issue.
+          close-pr-message: >
+            Cette pull request a été fermée en raison de son inactivité prolongée.
+            Si vous pensez que cela est une erreur, veuillez la rouvrir ou créer une nouvelle pull request.
+            This pull request was closed due to prolonged inactivity.
+            If you believe this is a mistake, please reopen it or create a new pull request.
+          stale-issue-label: "stale"
+          stale-pr-label: "stale"
+          exempt-issue-labels: "pinned,security"
+          remove-stale-when-updated: true
+          delete-branch: false
