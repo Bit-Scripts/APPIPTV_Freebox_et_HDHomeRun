@@ -1,0 +1,28 @@
+# Nombre de jours avant qu'une issue ou une pull request soit marquée comme stale
+daysUntilStale: 10
+
+# Nombre de jours supplémentaires avant que l'issue ou la pull request stale soit fermée
+daysUntilClose: 7
+
+# Étiquette à ajouter aux issues et pull requests stale
+staleLabel: "stale"
+
+# Commentaire ajouté lorsqu'une issue ou une pull request est marquée comme stale
+markComment: >
+  Cette issue a été marquée comme périmée en raison de son inactivité.
+  Si aucune activité n'est détectée dans les 7 prochains jours, elle sera fermée.
+
+# Commentaire ajouté lorsqu'une issue ou une pull request stale est fermée
+closeComment: >
+  Cette issue a été fermée en raison de son inactivité prolongée. Si vous pensez
+  que cela est une erreur, veuillez la rouvrir ou créer une nouvelle issue.
+
+# Paramètres facultatifs pour ignorer certains types d'issues ou de pull requests
+exemptLabels:
+  - "pinned"
+  - "security"
+
+# Appliquer seulement aux issues, ou aux pull requests
+only: issues
+# ou pour les pull requests:
+# only: prs
