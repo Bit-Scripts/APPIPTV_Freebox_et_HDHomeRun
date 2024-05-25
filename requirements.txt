@@ -3,3 +3,4 @@ requests
 python-vlc
 pytz
 qdarkstyle
+unidecode

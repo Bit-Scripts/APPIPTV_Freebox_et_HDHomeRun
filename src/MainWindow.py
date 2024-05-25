@@ -1,8 +1,9 @@
+import re
 import sys
 import os
 import requests
 import time
-import json
+from unidecode import unidecode
 import datetime
 from PyQt6 import QtWidgets
 from PyQt6.QtGui import QPixmap, QColor, QPalette, QIcon
@@ -149,6 +150,7 @@ class MainWindow(QMainWindow):
         # Ajout du widget au layout destiné à l'affichage d'informations
         self.info_widget_area.layout().addWidget(self.semitransparent_widget)
         self.semitransparent_widget.show()  # Assurez-vous que le widget est visible
+        self.semitransparent_widget.show()  # Assurez-vous que le widget est visible
         
         self.logger.debug("Widget should be visible now")  # Journalisation pour le débogage
 
@@ -196,7 +198,7 @@ class MainWindow(QMainWindow):
                     channel_number, icon_path = self.channels_name[channel_name.lower()]
                     # Ajouter le tuple à la liste
                     ordered_uuids.append((channel_number, channel_name, icon_path, uuid))
-                if channel_name == "France 3" and channel_number != 301:
+                if channel_name.lower() == "france 3" and channel_number != 301:
                     ordered_uuids.append(("3", channel_name, os.path.join(self.application_path, 'assets/logos/France_3.png'), uuid))
                     
             ordered_uuids = sorted(ordered_uuids, key=lambda x: int(x[0]))
@@ -222,7 +224,7 @@ class MainWindow(QMainWindow):
         
         # Charger le logo de la chaîne
         channel_logo = QLabel(self)
-        sanitized_name = current_channel_name.replace(" ", "_").replace("-", "_").replace("'", "")
+        sanitized_name = unidecode(current_channel_name.lower()).replace(' ', '_').replace('-', '_').replace("'", '').replace("/","-")
         logo_path = os.path.join(self.application_path, f'assets/logos/{sanitized_name}.png')
         if os.path.exists(logo_path):
             pixmap = QPixmap(logo_path)
@@ -539,12 +541,24 @@ class MainWindow(QMainWindow):
         if not self.is_hovered:
             self.mouse_position_timer.stop()
             self.logger.debug("Attendre avant de redétecter le survol")
-    
+
+    def get_channel_number(self, name):
+        match = re.match(r'^(\d+)', name)
+        return int(match.group(1)) if match else None
+
     def displayChannels(self, channels):
         row, col = 0, 0
         self.channels_name = {}
-        for name, url in sorted(channels.items(), key=lambda x: int(x[0].split(" - ")[0])):
-            channel_number = name.split(' - ')[0]
+
+        def get_sort_key(name):
+            channel_number = self.get_channel_number(name)
+            return channel_number if channel_number is not None else float('inf')
+
+        for name, url in sorted(channels.items(), key=lambda x: get_sort_key(x[0])):
+            channel_number = self.get_channel_number(name)
+            if channel_number is None:
+                continue
+
             channel_name = ' - '.join(name.split(" - ")[1:])
             tool_button = QToolButton()
             tool_button.setText(channel_name)
@@ -557,15 +571,21 @@ class MainWindow(QMainWindow):
             if icon_path:
                 tool_button.setIcon(QIcon(icon_path))
                 self.channels_name[channel_name.lower()] = channel_number, icon_path
-                
+
             channel_name = ' - '.join(name.split(" - ")[1:]).replace(' ', '_').replace('-', '_').replace('\'', '')
-            
+
             self.button_layout.addWidget(tool_button, row, col)
-            
+
             col += 1
             if col > 2:  # Three buttons per row
                 col = 0
                 row += 1
+
+    def extract_channel_number(self, channel_name):
+        try:
+            return int(channel_name.split(" - ")[0])
+        except ValueError:
+            return float('inf') 
 
     def get_channel_icon(self, channel_name):
         parts = channel_name.split(' - ')
@@ -577,7 +597,7 @@ class MainWindow(QMainWindow):
         else:
             channel_name = channel_name.split(' - ')[1]
             
-        sanitized_name = channel_name.replace(" ", "_").replace("-", "_").replace("'", "")
+        sanitized_name = unidecode(channel_name.lower()).replace(" ", "_").replace("-", "_").replace("'", "")
         icon_formats = ['svg', 'png']
         for fmt in icon_formats:
             icon_path = os.path.join(self.application_path, 'assets', 'logos', f'{sanitized_name}.{fmt}')
@@ -723,7 +743,7 @@ class MainWindow(QMainWindow):
             if channel_name == channel_info['name'][:14] or channel_name == channel_info['name']:
                 find = True
                 program_name, program_desc, program_picture_url, program_start_date, program_duration = self.get_current_program(uuid)
-                sanitized_name = channel_name.replace(" ", "_").replace("-", "_").replace("'", "")
+                sanitized_name = unidecode(channel_name.lower()).replace(" ", "_").replace("-", "_").replace("'", "")
                 icon_path = os.path.join(self.application_path, 'assets', 'logos', f'{sanitized_name}.png')
                 if not icon_path:
                     icon_path = os.path.join(self.application_path, 'assets/image/missing_icon.png')

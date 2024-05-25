@@ -2,6 +2,7 @@ import os
 import time
 import requests
 from PyQt6.QtCore import pyqtSignal, QThread
+from unidecode import unidecode
 
 class DataLoadThread(QThread):
     data_loaded = pyqtSignal(dict)
@@ -78,7 +79,7 @@ class DataLoadThread(QThread):
         self.data_loaded.emit(enriched_epg_data)
 
     def get_channel_icon(self, channel_name):
-        sanitized_name = channel_name.replace(" ", "_").replace("-", "_").replace("'", "")
+        sanitized_name = unidecode(channel_name.lower()).replace(" ", "_").replace("-", "_").replace("'", "")
         icon_formats = ['svg', 'png']
         for fmt in icon_formats:
             icon_path = os.path.join(self.application_path, 'assets', 'logos', f'{sanitized_name}.{fmt}')
