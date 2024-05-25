@@ -44,9 +44,13 @@ class MainWindow(QMainWindow):
         app_icon = QIcon(window_icon_path)
         QApplication.instance().setWindowIcon(app_icon)
 
-        # Initialize VLC player
-        instance = vlc.Instance()
-        self.player = instance.media_player_new()
+        # Initialisation de VLC
+        try:
+            instance = vlc.Instance()
+            self.player = instance.media_player_new()
+            print("VLC media player initialized successfully")
+        except AttributeError as e:
+            print(f"Failed to initialize VLC instance or create media player: {e}")
         
         # Création de l'objet de surveillance d'état VLC
         self.state_monitor = VLCStateMonitor(self.player)

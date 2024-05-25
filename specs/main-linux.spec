@@ -38,15 +38,13 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
     console=False,  # Change to False if you do not want a console window
     disable_windowed_traceback=False,
+    runtime_tmpdir=None,
     argv_emulation=False,
+    icon='../assets/image/missing_icon.png',  # Chemin vers l'icône
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='../assets/image/missing_icon.png',  # Chemin vers l'icône
+    onefile=True  # Ajoutez cette ligne pour créer un seul exécutable
 )
-
-
