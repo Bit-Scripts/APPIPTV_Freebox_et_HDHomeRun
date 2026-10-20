@@ -10,18 +10,16 @@ class SemiTransparentBlurWidget(QWidget):
     def __init__(self, logger, duration=30, channel_name=None, program_name=None, program_desc=None, program_picture_url=None, icon_path=None, program_start_date=None, program_duration=None, has_service=None, has_abo=None, available=None):
         super().__init__()
         self.logger = logger
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Fixed)
-        self.setMinimumWidth(800)
-        self.setFixedHeight(200)
+        self.setMinimumWidth(0)
+        self.setMinimumHeight(200)
         self.setStyleSheet("background-color: rgba(0, 0, 0, 0);")  # Fond complètement transparent
         self.duration = duration
 
         self.setupUI(icon_path, channel_name, program_name, program_desc, program_picture_url, program_start_date, program_duration, has_service, has_abo, available)
         
-        self.show()
         
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -116,7 +114,7 @@ class SemiTransparentBlurWidget(QWidget):
         abo_status_lbl = QLabel('🟢' if has_abo else '🔴')
         abo_status_lbl.setStyleSheet("font-size: 10px;")
         abo_status_lbl.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        available_status_lbl = QLabel('🟢' if has_abo else '🔴')
+        available_status_lbl = QLabel('🟢' if available else '🔴')
         available_status_lbl.setStyleSheet("font-size: 10px;")
         available_status_lbl.setAlignment(Qt.AlignmentFlag.AlignLeft)
         service_status_layout.addWidget(service_status_lbl)
@@ -133,14 +131,14 @@ class SemiTransparentBlurWidget(QWidget):
         
         program_name_lbl = QLabel(f"Nom du Programme : {program_name}")
         program_name_lbl.setStyleSheet("font-weight: bold; font-size: 14px;")
-        program_name_lbl.setMinimumWidth(850)
+        program_name_lbl.setWordWrap(True)
         # program_name_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignLeft)
         layoutV.addWidget(program_name_lbl)
 
         program_description_lbl = QLabel(program_description)
         program_description_lbl.setStyleSheet("font-size: 11px;")
         program_description_lbl.setWordWrap(True)
-        program_description_lbl.setMinimumWidth(850)
+        program_description_lbl.setMinimumWidth(0)
         program_description_lbl.setMinimumHeight(100)
         program_description_lbl.setAlignment(Qt.AlignmentFlag.AlignBottom)
         layoutV.addWidget(program_description_lbl)
@@ -154,3 +152,9 @@ class SemiTransparentBlurWidget(QWidget):
         layout.addWidget(program_image_lbl)
         
         self.setLayout(layout)
+        for label in (channel_name_lbl, program_name_lbl, program_description_lbl):
+            label.setTextFormat(Qt.TextFormat.PlainText)
+            label.setWordWrap(True)
+            label.setMinimumWidth(0)
+            label.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored,
+                                QtWidgets.QSizePolicy.Policy.Preferred)

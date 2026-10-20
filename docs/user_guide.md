@@ -8,8 +8,8 @@ Bienvenue dans IPTVAPP ! Ce guide vous aidera à configurer et utiliser l'applic
 
 ### Prérequis
 
-- Python 3.8 ou supérieur
-- VLC media player
+- Python 3.11 ou supérieur
+- libmpv
 
 ### Étapes d'installation
 
@@ -26,7 +26,7 @@ Bienvenue dans IPTVAPP ! Ce guide vous aidera à configurer et utiliser l'applic
 
 3. Lancez l'application :
     ```bash
-    python main.py
+    python -s main.py
     ```
 
 ## Utilisation
@@ -41,4 +41,4 @@ Bienvenue dans IPTVAPP ! Ce guide vous aidera à configurer et utiliser l'applic
 
 ### Problèmes courants
 
-- **Erreur de chargement de `libvlc.dll`** : Assurez-vous que VLC est installé et que les chemins d'accès sont correctement configurés.
+- **Erreur de chargement de `mpv-2.dll`** : Assurez-vous que libmpv est installé et que les chemins d'accès sont correctement configurés.

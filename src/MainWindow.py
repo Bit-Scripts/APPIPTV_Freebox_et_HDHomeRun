@@ -1,16 +1,16 @@
 import re
-import sys
 import os
 import requests
 import time
 from unidecode import unidecode
 import datetime
 from PyQt6 import QtWidgets
-from PyQt6.QtGui import QPixmap, QColor, QPalette, QIcon
+from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtCore import Qt, QSize, QEvent, QPropertyAnimation, QEasingCurve, QTimer
-from PyQt6.QtWidgets import QPushButton, QApplication, QMainWindow, QStackedWidget, QVBoxLayout, QScrollArea, QWidget, QGridLayout, QToolButton, QSplitter, QHBoxLayout, QLabel
-import vlc
-from src.VLCStateMonitor import VLCStateMonitor
+from PyQt6.QtWidgets import QPushButton, QApplication, QMainWindow, QStackedWidget, QVBoxLayout, QScrollArea, QWidget, QGridLayout, QToolButton, QHBoxLayout, QLabel
+from src.MpvWidget import MpvWidget
+from src.VideoArea import VideoArea
+from src.FreeboxLogos import FreeboxLogoRefresh, read_catalogue, match_channel
 from src.SettingsDialog import SettingsDialog
 from src.SemiTransparentBlurWidget import SemiTransparentBlurWidget
 from src.EPGTable import EPGTable
@@ -31,6 +31,12 @@ class MainWindow(QMainWindow):
         self.config_file_path = config_file_path
         self.config = config
         self.hdhomerun_url = self.config.get("hdhomerun_url")    
+        self.logo_cache_path = os.path.join(config_path, 'freebox-logos')
+        self.bundled_logo_path = os.path.join(application_path, 'assets/logos/freebox')
+        self.channel_catalogue = (read_catalogue(self.logo_cache_path)
+                                  or read_catalogue(self.bundled_logo_path))
+        self.channel_buttons = {}
+        self.logo_thread = None
         self.setup_ui()
 
         # Joindre le chemin du répertoire du script avec le nom du fichier image
@@ -44,53 +50,13 @@ class MainWindow(QMainWindow):
         app_icon = QIcon(window_icon_path)
         QApplication.instance().setWindowIcon(app_icon)
 
-        # Initialisation de VLC
-        try:
-            instance = vlc.Instance()
-            self.player = instance.media_player_new()
-            print("VLC media player initialized successfully")
-        except AttributeError as e:
-            print(f"Failed to initialize VLC instance or create media player: {e}")
-        
-        # Création de l'objet de surveillance d'état VLC
-        self.state_monitor = VLCStateMonitor(self.player)
-        self.state_monitor.error_detected.connect(self.handle_vlc_error)
-        
-        # Création du QTimer pour vérifier l'état VLC périodiquement
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.state_monitor.check_state)
-        self.timer.start(1000) 
-        
-        # Initialisation du SemiTransparentBlurWidget mais non ajouté immédiatement
-        self.semitransparent_widget = None  # Initialisé à None
+        self.semitransparent_widget = None
+        self.videoframe = MpvWidget(self.logger)
+        self.player = self.videoframe
+        self.player.error.connect(self.handle_player_error)
+        self.player.playbackEnded.connect(self.handle_playback_ended)
+        QApplication.instance().aboutToQuit.connect(self.player.shutdown)
 
-        # Define the video frame
-        self.videoframe = QtWidgets.QFrame()
-        self.videoframe.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
-        self.videoframe.setAutoFillBackground(True)
-
-
-        # Create a palette object and apply it to the video frame
-        self.palette = QPalette()
-        self.palette.setColor(QPalette.ColorRole.Window, QColor(0, 0, 0))
-        self.videoframe.setPalette(self.palette)
-        self.videoframe.setStyleSheet("""
-            * {
-                color: white;
-                background-color: black;
-                border: none;
-            }
-        """
-        )
-
-        # Bind VLC to the video frame
-        if sys.platform == "win32":  # Windows
-            self.player.set_hwnd(self.videoframe.winId())
-        elif sys.platform == "linux":  # Linux
-            self.player.set_xwindow(int(self.videoframe.winId()))
-        elif sys.platform == "darwin":  # MacOS
-            self.player.set_nsobject(int(self.videoframe.winId()))
-            
         # Initialize error label
         self.error_label = QLabel("Channel not available", self)
         self.error_label.setStyleSheet("QLabel { color : red; background-color: black; text-align: center;}")
@@ -109,7 +75,7 @@ class MainWindow(QMainWindow):
         
         self.image = None
 
-        self.isPlaying = True
+        self.isPlaying = False
         
         self.epg_table = None
         
@@ -119,6 +85,7 @@ class MainWindow(QMainWindow):
         
         self.initUI()
         self.setupClock()
+        self.refresh_channel_logos()
 
     def centerWindow(self):
         # Obtenir la taille de l'écran depuis l'application
@@ -151,89 +118,73 @@ class MainWindow(QMainWindow):
         # Création du widget avec les nouvelles données    
         self.semitransparent_widget = SemiTransparentBlurWidget(self.logger, duration=30, channel_name=channel_name, program_name=program_name, program_desc=program_desc, program_picture_url=program_picture_url, icon_path=icon_path, program_start_date=program_start_date, program_duration=program_duration, has_service=has_service, has_abo=has_abo, available=available)
         
-        # Ajout du widget au layout destiné à l'affichage d'informations
-        self.info_widget_area.layout().addWidget(self.semitransparent_widget)
-        self.semitransparent_widget.show()  # Assurez-vous que le widget est visible
-        self.semitransparent_widget.show()  # Assurez-vous que le widget est visible
-        
-        self.logger.debug("Widget should be visible now")  # Journalisation pour le débogage
-
-        # Start the timer to remove the widget after duration
-        QTimer.singleShot(self.semitransparent_widget.duration * 1000, self.remove_semibransparent_widget)
+        self.video_area.set_info_widget(self.semitransparent_widget)
+        self.program_info_timer.start(self.semitransparent_widget.duration * 1000)
 
     def remove_semibransparent_widget(self):
         if self.epg_table is not None:
-            self.remove_epg_display_widget() 
-            
+            self.remove_epg_display_widget()
+        if hasattr(self, 'program_info_timer'):
+            self.program_info_timer.stop()
         if self.semitransparent_widget is not None:
-            # Étape 1: Masquer le widget
+            self.video_area.take_info_widget()
             self.semitransparent_widget.hide()
-
-            # Étape 2: Détacher le widget de tout layout parent (si attaché)
-            if self.semitransparent_widget.parent() is not None:
-                self.semitransparent_widget.setParent(None)
-                
-            # Étape 3: Supprimer tous les enfants du widget (si nécessaire)
-            for child in self.semitransparent_widget.findChildren(QWidget):
-                child.deleteLater()
-                
-            # Étape 4: Supprimer le widget
             self.semitransparent_widget.deleteLater()
             self.semitransparent_widget = None
-            
-            # Nettoyer le layout qui contenait le widget si nécessaire
-            while self.info_widget_area.layout().count():
-                item = self.info_widget_area.layout().takeAt(0)
-                if item.widget():
-                    item.widget().deleteLater()
 
     def get_ordered_uuids(self):
-        channels_list_url = 'http://mafreebox.freebox.fr/api/v8/tv/channels'
-        try:
-            response = requests.get(channels_list_url)
-            response.raise_for_status()
-            data = response.json()
-            ordered_uuids = []
-            channel_number = 0
-            # Parcourir les chaînes et construire la liste de tuples
-            for uuid, info in data['result'].items():
-                channel_name = info['name']
-                if channel_name.lower() in self.channels_name:
-                    channel_number, icon_path = self.channels_name[channel_name.lower()]
-                    # Ajouter le tuple à la liste
-                    ordered_uuids.append((channel_number, channel_name, icon_path, uuid))
-                if channel_name.lower() == "france 3" and channel_number != 301:
-                    ordered_uuids.append(("3", channel_name, os.path.join(self.application_path, 'assets/logos/France_3.png'), uuid))
-                    
-            ordered_uuids = sorted(ordered_uuids, key=lambda x: int(x[0]))
-            return ordered_uuids
-        except requests.RequestException as e:
-            self.logger.error(f"Erreur de réseau survenue : {e}", exc_info=True)
-            return []
+        ordered = []
+        for name, (number, icon_path) in self.channels_name.items():
+            matched = match_channel(name, self.channel_catalogue)
+            if matched:
+                ordered.append((number, matched[1]['name'], icon_path, matched[0]))
+        return sorted(ordered, key=lambda item: int(item[0]))
 
-    def handle_vlc_error(self, error_message):
-        # Gestion de l'erreur VLC
-        self.showError(" non disponible")
-        
+    def handle_player_error(self, message):
+        self.logger.error(message)
+        self.showError(" : " + message)
+
+    def handle_playback_ended(self):
+        self.isPlaying = False
+        self.playPauseButton.setText("▶")
+        self.playPauseButton.setEnabled(False)
+
+    def closeEvent(self, event):
+        if self.logo_thread is not None and self.logo_thread.isRunning():
+            self.logo_thread.requestInterruption()
+            # Let the bounded current HTTP request finish without blocking Qt.
+            event.ignore()
+            self.logo_thread.finished.connect(self.close)
+            return
+        self.player.shutdown()
+        super().closeEvent(event)
+
     def showError(self, message):
         # Récupérer le nom de la chaîne courante
-        current_channel_name = getattr(self, 'current_channel_name', 'Channel Name')
+        current_channel_name = getattr(self, 'current_channel_name', None) or 'Chaîne'
 
         # Créer un QLabel pour afficher le logo et le nom de la chaîne
         error_layout = QVBoxLayout()
         error_label = QLabel(self)
+        error_label.setObjectName('channelErrorText')
+        error_label.setTextFormat(Qt.TextFormat.PlainText)
+        error_label.setWordWrap(True)
+        error_label.setMinimumWidth(0)
+        error_label.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored,
+                                  QtWidgets.QSizePolicy.Policy.Preferred)
         error_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         error_label.setStyleSheet("QLabel { font-size: 42px; font-weight: bold; color : black; background-color: grey}")
-        error_label.setText(current_channel_name + message)
+        # QLabel wraps at word boundaries. Add invisible opportunities inside
+        # long URLs/tokens so they cannot impose a huge minimum width.
+        text = current_channel_name + message
+        text = re.sub(r'\S{25,}', lambda match: '\u200b'.join(
+            match[0][index:index + 24] for index in range(0, len(match[0]), 24)), text)
+        error_label.setText(text)
         
         # Charger le logo de la chaîne
         channel_logo = QLabel(self)
-        sanitized_name = unidecode(current_channel_name.lower()).replace(' ', '_').replace('-', '_').replace("'", '').replace("/","-")
-        logo_path = os.path.join(self.application_path, f'assets/logos/{sanitized_name}.png')
-        if os.path.exists(logo_path):
-            pixmap = QPixmap(logo_path)
-        else:
-            pixmap = QPixmap(os.path.join(self.application_path, 'assets/image/missing_icon.png'))
+        logo_path = self.get_channel_icon(current_channel_name)
+        pixmap = QPixmap(logo_path)
         pixmap_resized = QPixmap(pixmap).scaled(125,125, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
         channel_logo.setPixmap(pixmap_resized)
         channel_logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -242,61 +193,55 @@ class MainWindow(QMainWindow):
         # Ajouter les éléments au layout vertical
         error_layout.addWidget(channel_logo)
         error_layout.addWidget(error_label)
-        error_widget = QWidget()
-        error_widget.setLayout(error_layout)
+        error_content = QWidget()
+        error_content.setLayout(error_layout)
+        error_content.setMinimumWidth(0)
+        error_content.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored,
+                                   QtWidgets.QSizePolicy.Policy.Preferred)
+        # Scroll vertically when the text is taller than the available video
+        # area; neither the text nor its size hint should enlarge the window.
+        error_widget = QScrollArea()
+        error_widget.setWidgetResizable(True)
+        error_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        error_widget.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        error_widget.setMinimumSize(0, 0)
+        error_widget.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored,
+                                  QtWidgets.QSizePolicy.Policy.Ignored)
+        error_widget.setWidget(error_content)
         error_widget.setStyleSheet("QWidget { background-color: grey}")
 
         # Définir le widget d'erreur dans le stacked widget
+        previous = getattr(self, '_channel_error_widget', None)
+        if previous is not None:
+            self.stacked_widget.removeWidget(previous)
+            previous.deleteLater()
+        self._channel_error_widget = error_widget
         self.stacked_widget.addWidget(error_widget)
         self.stacked_widget.setCurrentWidget(error_widget)
         
         # Arrêter la lecture vidéo
         self.player.stop()
         
-        # Réinitialiser le contenu du QFrame en recréant un widget vidéo
-        self.initVideoFrame()
+        self.handle_playback_ended()
 
     def hideErrorMessage(self):
         self.stacked_widget.setCurrentWidget(self.videoframe)
 
-    def initVideoFrame(self):        
-        # Effacer le contenu du QFrame
-        for widget in self.videoframe.findChildren(QWidget):
-            widget.deleteLater()
-        
-        # Effacer le QFrame   
-        self.videoframe.deleteLater()
-        
-        # Define the video frame
-        self.videoframe = QtWidgets.QFrame()
-        self.videoframe.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
-        self.videoframe.setAutoFillBackground(True)
-        self.videoframe.setPalette(self.palette)
-        
-        # Bind VLC au nouveau widget vidéo
-        if os.name == 'nt':  # Windows
-            self.player.set_hwnd(self.videoframe.winId())
-        elif os.name == 'posix':  # Linux and macOS
-            self.player.set_xwindow(int(self.videoframe.winId()))
-
-        # Ajouter le QFrame au splitter
-        self.stacked_widget.addWidget(self.videoframe)
-
     def initUI(self):
-        self.splitter = QSplitter(Qt.Orientation.Horizontal)  # Create a horizontal splitter
-        
-        # Create the fixed sidebar
-        sidebar = QScrollArea()
-        sidebar.setFixedWidth(self.initial_sidebar_width)  # Utiliser la taille initiale définie
-        sidebar.setWidgetResizable(True)
+        self.sidebar = QScrollArea()
+        self.sidebar.setWidgetResizable(True)
+        self.sidebar.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         # Add channel buttons to the sidebar
         sidebar_widget = QWidget()
         sidebar_layout = QGridLayout(sidebar_widget)
         sidebar_widget.setLayout(sidebar_layout)
-        sidebar.setWidget(sidebar_widget)
+        self.sidebar.setWidget(sidebar_widget)
 
         self.button_layout = sidebar_layout
+        self.program_info_timer = QTimer(self)
+        self.program_info_timer.setSingleShot(True)
+        self.program_info_timer.timeout.connect(self.remove_semibransparent_widget)
         
         # Ajouter un QLabel pour l'heure actuelle
         self.clock_label = QLabel("Heure actuelle: --:--")
@@ -308,7 +253,10 @@ class MainWindow(QMainWindow):
         vertical_layout = QVBoxLayout()
         self.info_widget_area = QWidget()
         self.info_widget_area.setLayout(QVBoxLayout())
-        vertical_layout.addWidget(self.stacked_widget, 1000)
+        self.video_area = VideoArea(self.stacked_widget, self.sidebar)
+        self.video_area.setAttribute(Qt.WidgetAttribute.WA_Hover)
+        self.video_area.installEventFilter(self)
+        vertical_layout.addWidget(self.video_area, 1000)
         self.layout_widget_info.addWidget(self.info_widget_area)
         vertical_layout.addLayout(self.layout_widget_info, 1) 
         
@@ -316,23 +264,11 @@ class MainWindow(QMainWindow):
         self.container_widget = QWidget()
         self.container_widget.setLayout(vertical_layout)   
         
-        self.splitter.addWidget(sidebar)  # Add the sidebar to the splitter
-        self.splitter.addWidget(self.container_widget)  # Add the video frame to the splitter
-
-        # Set initial size proportion
-        self.splitter.setSizes([300, 900])
         self.initial_sidebar_width = 300
-
-        # Set initial size proportion
-        self.splitter.setSizes([self.initial_sidebar_width, 900])  # Utiliser la taille initiale définie
-        
         self.central_widget = QWidget()
 
-        self.central_widget.setAttribute(Qt.WidgetAttribute.WA_Hover)
-        self.central_widget.installEventFilter(self)
-
         main_layout = QVBoxLayout()
-        main_layout.addWidget(self.splitter)
+        main_layout.addWidget(self.container_widget)
         self.central_widget.setLayout(main_layout)
         self.setCentralWidget(self.central_widget)
         
@@ -344,22 +280,13 @@ class MainWindow(QMainWindow):
         self.hover_timer.setSingleShot(True)
         self.hover_timer.timeout.connect(self.enable_hover_detection)  # Réactiver la détection de survol après le délai
         
-        # Initialiser les animations
-        self.show_sidebar_animation = QPropertyAnimation(self.splitter.widget(0), b'maximumWidth')
-        self.show_sidebar_animation.setDuration(100)  # Durée de l'animation en millisecondes (1 seconde)
-        self.show_sidebar_animation.setStartValue(0)
-        self.show_sidebar_animation.setEndValue(self.initial_sidebar_width)
-        self.show_sidebar_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)  # Courbe d'accélération pour une transition en douceur
+        self.show_sidebar_animation = QPropertyAnimation(self.video_area, b'sidebarWidth')
+        self.show_sidebar_animation.setDuration(100)
+        self.show_sidebar_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        self.hide_sidebar_animation = QPropertyAnimation(self.video_area, b'sidebarWidth')
+        self.hide_sidebar_animation.setDuration(1000)
+        self.hide_sidebar_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
 
-        self.hide_sidebar_animation = QPropertyAnimation(self.splitter.widget(0), b'maximumWidth')
-        self.hide_sidebar_animation.setDuration(1000)  # Durée de l'animation en millisecondes (1 seconde)
-        self.hide_sidebar_animation.setStartValue(self.splitter.widget(0).maximumWidth())
-        self.hide_sidebar_animation.setEndValue(0)
-        self.hide_sidebar_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)  # Courbe d'accélération pour une transition en douceur
-
-        # S'assurer que le widget de la barre latérale peut être réduit à une largeur minimale de zéro
-        self.splitter.widget(0).setMinimumWidth(0)
-        
         # Création des boutons pour le contrôle des vues
         self.current_program_button = QtWidgets.QPushButton("Programme Actuel")
         self.all_programs_button = QtWidgets.QPushButton("Programme Complet pour Toutes les Chaînes")
@@ -380,8 +307,8 @@ class MainWindow(QMainWindow):
         self.volume_label.setText('Volume')
         self.volumeSlider = QtWidgets.QSlider(Qt.Orientation.Horizontal, self)
         self.volumeSlider.setMaximum(100)  # Le volume est généralement entre 0 et 100
-        self.player.audio_set_volume(80)
-        self.volumeSlider.setValue(self.player.audio_get_volume())
+        self.player.set_volume(80)
+        self.volumeSlider.setValue(80)
         self.volumeSlider.valueChanged.connect(self.changeVolume)
         
         # Ajouter les controleur de lecture à la fenêtre principale
@@ -467,20 +394,17 @@ class MainWindow(QMainWindow):
             self.epg_table = None
 
     def togglePlayPause(self):
-        if self.isPlaying:
-            self.player.pause()
-            self.playPauseButton.setText("▶")
-            self.playPauseButton.setStyleSheet("QPushButton { color: green; }")
-            self.showError(" Chaîne en Arrêt")
-        else:
-            self.player.play()
-            self.playPauseButton.setText("■")
-            self.playPauseButton.setStyleSheet("QPushButton { color: red; }")
-            self.hideErrorMessage()  # Masquer l'erreur lors de la reprise de la lecture
-        self.isPlaying = not self.isPlaying
+        try:
+            self.player.set_paused(self.isPlaying)
+            self.isPlaying = not self.isPlaying
+            self.playPauseButton.setText("Ⅱ" if self.isPlaying else "▶")
+            self.playPauseButton.setStyleSheet(
+                "QPushButton { color: %s; }" % ("red" if self.isPlaying else "green"))
+        except Exception as exc:
+            self.handle_player_error(str(exc))
 
     def changeVolume(self, value):
-        self.player.audio_set_volume(value)
+        self.player.set_volume(value)
 
     def createProgramWidget(self, program_info):
         widget = QtWidgets.QWidget()
@@ -498,19 +422,19 @@ class MainWindow(QMainWindow):
         self.hover_enabled = True
 
     def adjust_sidebar_width_on_hover(self, show):
-        # Ajuster la taille de la colonne du splitter pour faire apparaître/disparaître la barre latérale
-        if show:  # Si la barre latérale est caché
-            self.show_sidebar_animation.start()
-        else:  # Si la barre latérale est visible
-            self.hide_sidebar_animation.start()
-        # Mettre à jour le dernier état de survol
+        self.show_sidebar_animation.stop()
+        self.hide_sidebar_animation.stop()
+        animation = self.show_sidebar_animation if show else self.hide_sidebar_animation
+        animation.setStartValue(self.video_area.sidebarWidth)
+        animation.setEndValue(self.initial_sidebar_width if show else 0)
+        animation.start()
         self.last_hover_state = show
 
     def eventFilter(self, obj, event):
-        if obj is self.central_widget:
-            if event.type() == QEvent.Type.Enter and self.hover_enabled:
+        if obj is getattr(self, "video_area", None):
+            if event.type() == QEvent.Type.HoverEnter and self.hover_enabled:
                 self.adjust_sidebar_width_on_hover(True)
-            elif event.type() == QEvent.Type.Leave:
+            elif event.type() == QEvent.Type.HoverLeave:
                 self.adjust_sidebar_width_on_hover(False)
                 self.disable_hover_detection()  # Désactiver temporairement la détection de survol
                 self.hover_timer.start(200)  # Délai d'une seconde avant de réactiver la détection de survol
@@ -518,22 +442,24 @@ class MainWindow(QMainWindow):
 
     def loadPlaylists(self):
         freebox_channels = self.loadFreeboxPlaylist()
-        hdhomerun_channels = self.loadHDHomeRunPlaylist()
+        self.displayChannels(freebox_channels)
+        # freebox_channels = self.loadFreeboxPlaylist()
+        # hdhomerun_channels = self.loadHDHomeRunPlaylist()
 
-        # Merge channels while giving preference to Freebox channels and adding unique HDHomeRun channels
-        merged_channels = freebox_channels.copy()
-        
-        for channel, url in hdhomerun_channels.items():
-            channel_number = channel.split(" - ")[0]
-            # Gérer spécifiquement la chaîne numéro 3
-            if channel_number == '3':
-                merged_channels["3 - France 3"] = url
-            else:
-                # Vérifiez si ce numéro de chaîne n'existe pas déjà dans les chaînes freebox
-                if not any(c.split(" - ")[0] == channel_number for c in freebox_channels.keys()):
-                    merged_channels[channel] = url
+        # # Merge channels while giving preference to Freebox channels and adding unique HDHomeRun channels
+        # merged_channels = freebox_channels.copy()
 
-        self.displayChannels(merged_channels)
+        # for channel, url in hdhomerun_channels.items():
+        #     channel_number = channel.split(" - ")[0]
+        #     # Gérer spécifiquement la chaîne numéro 3
+        #     if channel_number == '3':
+        #         merged_channels["3 - France 3"] = url
+        #     else:
+        #         # Vérifiez si ce numéro de chaîne n'existe pas déjà dans les chaînes freebox
+        #         if not any(c.split(" - ")[0] == channel_number for c in freebox_channels.keys()):
+        #             merged_channels[channel] = url
+
+        # self.displayChannels(merged_channels)
     
     def mouseMoveEvent(self, event):
         # Mettre à jour la position de la souris à chaque mouvement
@@ -565,6 +491,7 @@ class MainWindow(QMainWindow):
 
             channel_name = ' - '.join(name.split(" - ")[1:])
             tool_button = QToolButton()
+            self.channel_buttons[channel_name] = tool_button
             tool_button.setText(channel_name)
             tool_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
             tool_button.setIconSize(QSize(50, 50))
@@ -591,16 +518,39 @@ class MainWindow(QMainWindow):
         except ValueError:
             return float('inf') 
 
+    def refresh_channel_logos(self):
+        self.logo_thread = FreeboxLogoRefresh(self.logo_cache_path, self)
+        self.logo_thread.refreshed.connect(self.apply_channel_logos)
+        self.logo_thread.failed.connect(lambda message: self.logger.warning(
+            "Actualisation logos Freebox impossible, repli local : %s", message))
+        QApplication.instance().aboutToQuit.connect(self.stop_logo_refresh)
+        self.logo_thread.start()
+
+    def stop_logo_refresh(self):
+        if self.logo_thread is not None and self.logo_thread.isRunning():
+            self.logo_thread.requestInterruption()
+            self.logo_thread.wait(11000)
+
+    def apply_channel_logos(self, catalogue, report):
+        self.channel_catalogue = catalogue
+        self.logger.info("Logos Freebox : %s", report)
+        for name, button in self.channel_buttons.items():
+            path = self.get_channel_icon(name)
+            button.setIcon(QIcon(path))
+            number, _ = self.channels_name[name.lower()]
+            self.channels_name[name.lower()] = number, path
+        self.ordered_uuids = self.get_ordered_uuids()
+
     def get_channel_icon(self, channel_name):
-        parts = channel_name.split(' - ')
-        if len(parts) < 2:
-            parts = channel_name.split(' ')
-            if len(parts) >= 2:
-                parts.pop(0)  # Remove the first element
-                channel_name = ' '.join(parts)
-        else:
-            channel_name = channel_name.split(' - ')[1]
-            
+        if ' - ' in channel_name:
+            channel_name = ' - '.join(channel_name.split(' - ')[1:])
+        matched = match_channel(channel_name, self.channel_catalogue)
+        if matched:
+            uuid, _ = matched
+            for directory in (self.logo_cache_path, self.bundled_logo_path):
+                path = os.path.join(directory, uuid + '.png')
+                if os.path.isfile(path):
+                    return path
         sanitized_name = unidecode(channel_name.lower()).replace(" ", "_").replace("-", "_").replace("'", "")
         icon_formats = ['svg', 'png']
         for fmt in icon_formats:
@@ -612,31 +562,18 @@ class MainWindow(QMainWindow):
         return os.path.join(self.application_path, 'assets/image/missing_icon.png')
 
     def playStream(self, url, name):
+        self.current_channel_name = name
         try:
-            # Arrêter la lecture vidéo actuelle
-            self.player.stop()
-
-            # Définir le nouvel emplacement média sans créer de nouvelle instance de lecteur multimédia
-            self.player.set_mrl(url)
-            
-            # Lancer la lecture
-            self.player.play()
-            self.playPauseButton.setEnabled(True)
-            self.playPauseButton.setText("■")
-            self.playPauseButton.setStyleSheet("QPushButton { color: red; }")
-
-            # Afficher le nom de la chaîne
-            self.current_channel_name = name
-            
-            # Masquer l'étiquette d'erreur
             self.hideErrorMessage()
-            
-            # Afficher l'EPG
+            self.player.play(url)
+            self.isPlaying = True
+            self.playPauseButton.setEnabled(True)
+            self.playPauseButton.setText("Ⅱ")
+            self.playPauseButton.setStyleSheet("QPushButton { color: red; }")
             self.get_uuid_of_current_channel(name)
-            
-        except Exception as e:
-            self.logger.error(f"Erreur lors de la lecture du flux : {str(e)}", exc_info=True)
-            self.showError(" non disponible")
+        except Exception as exc:
+            self.logger.exception("Erreur lors de la lecture du flux")
+            self.showError(" : " + str(exc))
 
     def loadFreeboxPlaylist(self):
         playlist_url = "http://mafreebox.freebox.fr/freeboxtv/playlist.m3u"
@@ -685,7 +622,7 @@ class MainWindow(QMainWindow):
 
                 # Initialize the dictionary entry for the channel name if it doesn't exist
                 if channel_name not in channels:
-                    channels[channel_name] = {"HD": None, "standard": None, "bas débit": None}
+                    channels[channel_name] = {"HD": None, "standard": None, "bas débit": None, "auto": None}
 
                 # Assign URL to the appropriate quality category
                 if quality in channels[channel_name]:
@@ -694,7 +631,7 @@ class MainWindow(QMainWindow):
         filtered_channels = {}
         for name, qualities in channels.items():
             # Pick the best quality available
-            url = qualities["HD"] or qualities["standard"] or qualities["bas débit"]
+            url = qualities["HD"] or qualities["standard"] or qualities["bas débit"] or qualities["auto"]
             if url:
                 filtered_channels[name] = url
 
@@ -731,26 +668,14 @@ class MainWindow(QMainWindow):
         return "Programme non disponible", "Description non disponible", "https://leseng.rosselcdn.net/sites/default/files/dpistyles_v2/ls_16_9_864w/2023/04/24/node_509239/30068567/public/2023/04/24/b9733237119z.1_20230119131757_000%2Bgrsm2a085.1-0.jpeg", int(time.time()), 3600
 
     def get_uuid_of_current_channel(self, channel_name):       
-        # Obtenez le JSON depuis l'API de la Freebox
-        channels_list_url = 'http://mafreebox.freebox.fr/api/v8/tv/channels'
-        try:
-            response = requests.get(channels_list_url)#, timeout=60)
-            response.raise_for_status()  # Lever une exception pour les codes de statut 4XX/5XX
-            data = response.json()
-        except requests.RequestException as e:
-            self.logger.error(f"Erreur de réseau survenue : {e}", exc_info=True)
-            return {}  # Retourner un dictionnaire vide ou une valeur par défaut
+        data = {'result': self.channel_catalogue}
+        matched = match_channel(channel_name or '', self.channel_catalogue)
         find = False
         for uuid, channel_info in data['result'].items():
-            print("channel_info['name'] :", channel_info['name'])
-            print("channel_name :", channel_name)
-            if channel_name == channel_info['name'][:14] or channel_name == channel_info['name']:
+            if matched and uuid == matched[0]:
                 find = True
                 program_name, program_desc, program_picture_url, program_start_date, program_duration = self.get_current_program(uuid)
-                sanitized_name = unidecode(channel_name.lower()).replace(" ", "_").replace("-", "_").replace("'", "")
-                icon_path = os.path.join(self.application_path, 'assets', 'logos', f'{sanitized_name}.png')
-                if not icon_path:
-                    icon_path = os.path.join(self.application_path, 'assets/image/missing_icon.png')
+                icon_path = self.get_channel_icon(channel_name)
                 has_service = channel_info.get('has_service', False)  # Par défaut False si non spécifié
                 has_abo = channel_info.get('has_abo', False)  # Par défaut False si non spécifié
                 available = channel_info.get('available', False)  # Par défaut False si non spécifié

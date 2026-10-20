@@ -1,6 +1,6 @@
 PyQt6
 requests
-python-vlc
+python-mpv==1.0.8
 pytz
 qdarkstyle
 unidecode

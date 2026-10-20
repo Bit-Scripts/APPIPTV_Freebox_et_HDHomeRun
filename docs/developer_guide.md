@@ -16,10 +16,10 @@ Bienvenue dans le guide du développeur de APPIPTV Freebox et HDHomeRun. Ce docu
   
 ## Architecture du projet
   
-L'application APPIPTV Freebox et HDHomeRun est conçue pour fournir une interface utilisateur graphique (GUI) pour le streaming IPTV à l'aide de PyQt6 et de la bibliothèque VLC en Python. Voici un aperçu de l'architecture du projet :
+L'application APPIPTV Freebox et HDHomeRun est conçue pour fournir une interface utilisateur graphique (GUI) pour le streaming IPTV à l'aide de PyQt6 et de la bibliothèque libmpv en Python. Voici un aperçu de l'architecture du projet :
   
 * **GUI** : Basée sur PyQt6 pour l'interface utilisateur.
-* **Streaming** : Intégration de VLC pour le streaming des chaînes TV.
+* **Streaming** : Intégration de libmpv pour le streaming des chaînes TV.
 * **API Freebox** : Utilisation de l'API Freebox pour récupérer les informations sur les chaînes TV et les données EPG.
   
 ## Dépendances 
@@ -29,7 +29,7 @@ L'application dépend des bibliothèques Python suivantes, spécifiées dans `re
 ```plaintext
 PyQt6
 requests
-python-vlc
+python-mpv==1.0.8
 pytz
 qdarkstyle
 ```
@@ -38,9 +38,9 @@ qdarkstyle
   
 ### Prérequis
   
-* Python 3.8 ou une version ultérieure doit être installé sur votre machine.
+* Python 3.11 ou une version ultérieure doit être installé sur votre machine.
   
-* VLC media player doit être installé pour le support du streaming.
+* libmpv doit être installé pour le support du streaming.
   
 ### Installation
   
@@ -52,7 +52,7 @@ pip install -r requirements.txt
 ```
 ### Configuration
   
-Assurez-vous que les chemins d'accès à VLC sont correctement configurés dans votre environnement.
+Installer la bibliothèque système libmpv et les plugins Qt OpenGL/Wayland. Voir [le guide du lecteur](mpv.md).
    
 
 ## Principales fonctionnalités
@@ -94,7 +94,7 @@ IPTVAPP/
 │   ├── MainWindow.py
 │   ├── SemiTransparentBlurWidget.py
 │   ├── SettingsDialog.py
-│   ├── VLCStateMonitor.py
+│   ├── MpvWidget.py
 ├── tests/
 │   ├── test_MainWindow.py
 │   ├── test_SettingsDialog.py
@@ -111,7 +111,7 @@ IPTVAPP/
     * **MainWindow.py** : Contient la définition de la fenêtre principale de l'application.
     * **EPGTable.py** : Gère l'affichage du guide des programmes TV.
     * **SettingsDialog.py** : Gère la boîte de dialogue des paramètres.
-    * **VLCStateMonitor.py** : Surveille l'état de VLC pour le streaming.
+    * **MpvWidget.py** : Gère le rendu OpenGL, les événements et le cycle de vie libmpv.
 * **tests/** : Contient les tests unitaires pour les composants principaux.
 * **assets/** : Contient les ressources graphiques (images et logos).
 * **docs/** : Contient la présente documentation pour mieux comprendre le projet et ses ressources.

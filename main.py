@@ -14,33 +14,6 @@ from src.CustomSplashScreen import CustomSplashScreen
 def configure_paths():
     application_path = sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
 
-    if getattr(sys, 'frozen', False):
-        vlc_plugin_path = os.path.join(application_path, 'plugins')
-        os.environ['VLC_PLUGIN_PATH'] = vlc_plugin_path
-
-        if platform.system() == "Darwin":
-            os.environ["LD_LIBRARY_PATH"] = os.path.join(application_path, 'lib')   
-            os.environ['DYLD_LIBRARY_PATH'] = os.path.join(application_path, 'lib')
-        else:
-            os.environ["LD_LIBRARY_PATH"] = application_path
-            
-    else:
-        vlc_plugin_path = {
-            "Windows": 'C:\\Program Files\\VideoLAN\\VLC\\plugins',
-            "Linux": '/usr/lib/x86_64-linux-gnu/vlc/plugins',
-            "Darwin": '/Applications/VLC.app/Contents/MacOS/plugins'
-        }
-
-        vlc_lib_path = {
-            "Darwin": '/Applications/VLC.app/Contents/MacOS/lib'
-        }
-
-        os_name = platform.system()
-        if os_name in vlc_plugin_path:
-            os.environ['VLC_PLUGIN_PATH'] = vlc_plugin_path[os_name]
-            if os_name == "Darwin":
-                os.environ['DYLD_LIBRARY_PATH'] = vlc_lib_path[os_name]
-
     return application_path
 
 def configure_log_path():
@@ -139,7 +112,4 @@ if __name__ == '__main__':
     config_file_path = os.path.join(config_path, 'config.json')
     config = load_config(config_file_path)
 
-    if platform.system() == "Linux":
-        os.environ["QT_QPA_PLATFORM"] = "xcb"
-        
     main()

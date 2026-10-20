@@ -13,15 +13,12 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         include:
           - os: ubuntu-latest
-            vlc_path: /usr/lib/x86_64-linux-gnu/vlc/plugins
             spec_file: specs/main-linux.spec
             output_name: APPIPTV-Linux
           - os: windows-latest
-            vlc_path: C:\Program Files\VideoLAN\VLC\plugins
             spec_file: specs/main-windows.spec
             output_name: APPIPTV-Windows.exe
           - os: macos-latest
-            vlc_path: /Applications/VLC.app/Contents/MacOS/plugins
             spec_file: specs/main-macos.spec
             output_name: APPIPTV-macOS.dmg
 
@@ -30,9 +27,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
@@ -40,25 +37,34 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Install VLC and xvfb on Linux
+      - name: Install libmpv on Linux
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y vlc libxcb-cursor0 xvfb
+          sudo apt-get install -y libmpv2 libxcb-cursor0
+          echo "IPTV_LIBMPV=$(ldconfig -p | awk '/libmpv.so.2 .*x86-64/ {print $NF; exit}')" >> "$GITHUB_ENV"
 
-      - name: Install VLC on Windows
+      - name: Install shared libmpv on Windows
         if: matrix.os == 'windows-latest'
+        shell: pwsh
+        env:
+          MPV_WINDOWS_LIB_URL: ${{ vars.MPV_WINDOWS_LIB_URL }}
         run: |
-          choco install vlc
+          if (!$env:MPV_WINDOWS_LIB_URL.StartsWith('https://')) {
+            throw 'Configure MPV_WINDOWS_LIB_URL with a trusted x64 shared libmpv ZIP URL'
+          }
+          Invoke-WebRequest $env:MPV_WINDOWS_LIB_URL -OutFile "$env:RUNNER_TEMP/mpv.zip"
+          Expand-Archive "$env:RUNNER_TEMP/mpv.zip" "$env:RUNNER_TEMP/mpv"
+          $dll = Get-ChildItem "$env:RUNNER_TEMP/mpv" -Recurse -Filter mpv-2.dll | Select-Object -First 1
+          if (!$dll) { throw 'mpv-2.dll absent from archive' }
+          "IPTV_LIBMPV=$($dll.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          $dll.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Append
 
-      - name: Install VLC and create-dmg on macOS
+      - name: Install libmpv and create-dmg on macOS
         if: matrix.os == 'macos-latest'
         run: |
-          brew install --cask vlc
-          brew install create-dmg
-
-      - name: Export VLC plugin path
-        run: echo "VLC_PLUGIN_PATH=${{ matrix.vlc_path }}" >> $GITHUB_ENV
+          brew install mpv create-dmg
+          echo "IPTV_LIBMPV=$(brew --prefix mpv)/lib/libmpv.dylib" >> "$GITHUB_ENV"
 
       - name: Build with PyInstaller using spec file
         run: |
@@ -90,7 +96,7 @@ jobs:
             "dist/APPIPTV.app"
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-app
           path: dist/${{ matrix.output_name }}
@@ -103,17 +109,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download Linux Artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ubuntu-latest-app
 
       - name: Download Windows Artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: windows-latest-app
 
       - name: Download macOS Artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: macos-latest-app
 
@@ -131,87 +137,9 @@ jobs:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
           body: |
-            ## Français
-            ### Version ${{ github.ref }} - Thème Sombre Bleuté par Défaut
-
-            Nous sommes ravis de présenter la version ${{ github.ref }} de notre application, qui introduit un thème sombre bleuté par défaut pour une meilleure lisibilité et une expérience utilisateur améliorée. Cette mise à jour comprend également une réorganisation et une optimisation de la structure du code pour une performance accrue.
-
-            **Installation facile :** Téléchargez le fichier, double-cliquez pour démarrer l'installation et suivez les instructions à l'écran. Assurez-vous que VLC est installé sur votre machine pour profiter pleinement des fonctionnalités de l'application.
-
-            **Dépendances nécessaires :**
-            L'application requiert VLC. Voici comment l'installer sur différentes plateformes :
-
-            - Ubuntu :
-            Utilisez apt pour installer VLC :
-            ```bash
-            sudo apt update
-            sudo apt install vlc
-            ```
-
-            - Windows :
-            Utilisez Chocolatey pour installer VLC :
-            ```bash
-            choco install vlc
-            ```
-
-            - macOS :
-            Installez VLC via Homebrew :
-            ```bash
-            brew install --cask vlc
-            ```
-
-            **Pour les utilisateurs de macOS :** Si vous recevez un message indiquant que le fichier est endommagé, désactivez temporairement Gatekeeper avec la commande suivante (utilisez cette commande avec prudence) :
-            ```bash
-            sudo spctl --master-disable
-            ```
-            Après l'installation et une fois vérifié que l'application fonctionne correctement, réactivez Gatekeeper pour protéger votre système :
-            ```bash
-            sudo spctl --master-enable
-            ```
-
-            Nous espérons que vous apprécierez les améliorations apportées dans cette nouvelle version. N'hésitez pas à nous faire part de vos retours pour continuer à enrichir et améliorer l'application.
-
-            ## English
-            ### Version ${{ github.ref }} - Default Bluish Dark Theme
-
-            We are excited to present version ${{ github.ref }} of our application, which introduces a default bluish dark theme for better readability and an enhanced user experience. This update also includes a reorganization and optimization of the code structure for increased performance.
-
-            **Easy Installation:** Download the file, double-click to start the installation, and follow the on-screen instructions. Make sure VLC is installed on your machine to fully enjoy the application's features.
-
-            **Required Dependencies:**
-            The application requires VLC. Here’s how to install it on different platforms:
-
-            - Ubuntu:
-            Install VLC using apt:
-            ```bash
-            sudo apt update
-            sudo apt install vlc
-            ```
-
-            - Windows:
-            Install VLC using Chocolatey:
-            ```bash
-            choco install vlc
-            ```
-
-            - macOS:
-            Install VLC via Homebrew:
-            ```bash
-            brew install --cask vlc
-            ```
-
-            **For macOS Users:** If you receive a message stating that the file is damaged, temporarily disable Gatekeeper with the following command (use this command with caution):
-
-            ```bash
-            sudo spctl --master-disable
-            ```
-            After installation and verifying that the application works correctly, re-enable Gatekeeper to protect your system:
-            ```bash
-            sudo spctl --master-enable
-            ```
-
-            We hope you enjoy the improvements in this new version. Feel free to provide us with your feedback to continue enriching and improving the application.
-
+            IPTVAPP — lecteur libmpv intégré à PyQt6/OpenGL.
+            Les distributions embarquent libmpv ; aucune installation séparée du lecteur n'est requise.
+            Consulter docs/mpv.md pour les dépendances graphiques, le réseau et les tests.
 
       - name: Save upload URL to environment
         run: echo "UPLOAD_URL=${{ steps.create_release.outputs.upload_url }}" >> $GITHUB_ENV

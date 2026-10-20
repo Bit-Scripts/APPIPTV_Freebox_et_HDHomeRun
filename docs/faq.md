@@ -6,7 +6,7 @@
   
 ### Qu'est-ce qu'APPIPTV Freebox et HDHomeRun ?
   
-APPIPTV Freebox et HDHomeRun est une application de streaming IPTV avec une interface utilisateur graphique basée sur PyQt6, permettant de visualiser des programmes TV en direct via la bibliothèque VLC media player en Python. L'application permet également la gestion des playlists M3U et la configuration des dispositifs HDHomeRun.
+APPIPTV Freebox et HDHomeRun est une application de streaming IPTV avec une interface utilisateur graphique basée sur PyQt6, permettant de visualiser des programmes TV en direct via la bibliothèque libmpv en Python. L'application permet également la gestion des playlists M3U et la configuration des dispositifs HDHomeRun.
   
 ### Installation
   
@@ -14,8 +14,8 @@ APPIPTV Freebox et HDHomeRun est une application de streaming IPTV avec une inte
   
 Pour installer l'application, vous devez disposer de :
   
-* Python 3.8 ou une version ultérieure.
-* VLC media player.
+* Python 3.11 ou une version ultérieure.
+* libmpv.
 * Une connexion Internet, de préférence fournie par Free Télécom pour un accès optimal aux fonctionnalités de l'application.
   
 #### Comment installer l'application ?
@@ -36,7 +36,7 @@ pip install -r requirements.txt
 3. Lancez l'application :
   
 ```bash
-python main.py
+python -s main.py
 ```
   
 ### Utilisation
@@ -59,9 +59,9 @@ Pour configurer un dispositif HDHomeRun, accédez aux paramètres de l'applicati
   
 ### Dépannage
   
-#### Je reçois une erreur indiquant que libvlc.dll ne peut pas être chargé. Que faire ?
+#### Je reçois une erreur indiquant que mpv-2.dll ne peut pas être chargé. Que faire ?
   
-Cette erreur peut survenir si VLC media player n'est pas correctement installé ou si l'application ne parvient pas à trouver le fichier libvlc.dll. Assurez-vous que VLC est installé et que le chemin d'accès à VLC est correctement configuré dans votre environnement.
+Cette erreur peut survenir si libmpv n'est pas correctement installé ou si l'application ne parvient pas à trouver le fichier mpv-2.dll. Assurez-vous que libmpv est installé et que le chemin d'accès à libmpv est correctement configuré dans votre environnement.
   
 #### L'application se bloque ou ne répond pas. Comment puis-je résoudre ce problème ?
   
