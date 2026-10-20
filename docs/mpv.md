@@ -231,3 +231,31 @@ Pour vérifier aussi les pixels d'une source 4:3 bleue :
 ffmpeg -loglevel error -f lavfi -i color=c=blue:s=320x240:r=25 -t 8 -c:v mpeg4 -y /tmp/iptv-4-3.mp4
 QT_QPA_PLATFORM=wayland IPTV_TEST_VIDEO=/tmp/iptv-render-test.mp4 IPTV_TEST_4_3=/tmp/iptv-4-3.mp4 python -s -m unittest discover -s tests -v
 ```
+
+## Workflows indépendants par OS
+
+Les workflows `build-linux.yml`, `build-windows.yml` et `build-macos.yml` sont
+indépendants : chacun se lance sur `main` ou manuellement pour un tag/commit.
+Leur logique commune reste dans `build-platform.yml` (workflow réutilisable,
+sans matrice). L'échec d'un OS n'annule pas les autres. Chaque run conserve son
+artefact et le journal de la révision exacte des sources. Les contrôles et outils
+CI viennent du commit du workflow ; les sources de l'application viennent de
+`source_ref`.
+
+```bash
+gh workflow run build-linux.yml --ref main -f source_ref=v1.5.0
+gh workflow run build-windows.yml --ref main -f source_ref=v1.5.0
+gh workflow run build-macos.yml --ref main -f source_ref=v1.5.0
+```
+
+Ces reconstructions ne déplacent aucun tag et ne créent aucune release.
+`release.yml` est l'unique orchestrateur de publication sur les futurs tags :
+il appelle les trois workflows OS dans le même run, puis publie seulement si les
+trois réussissent. Les artefacts téléchargés appartiennent donc à la même révision
+et au même run ; ils ne sont pas choisis parmi des constructions indépendantes
+potentiellement différentes.
+
+La reconstruction manuelle du tag public `v1.5.0` avec les contrôles corrigés a
+réussi pour les trois OS : run GitHub Actions `39384077044`. Les trois paquets
+sont disponibles comme artefacts de ce run ; aucune nouvelle release n'a été
+créée et le tag pointe toujours sur `b101d5e`.

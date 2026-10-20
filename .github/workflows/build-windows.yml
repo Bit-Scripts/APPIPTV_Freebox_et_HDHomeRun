@@ -1,0 +1,31 @@
+name: Build Windows
+run-name: Build Windows — ${{ inputs.source_ref || github.ref_name }}
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: 'Tag or commit to build without moving it'
+        required: true
+        default: 'v1.5.0'
+        type: string
+  workflow_call:
+    inputs:
+      source_ref:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-platform.yml
+    with:
+      runner: windows-latest
+      spec_file: specs/main-windows.spec
+      output_name: APPIPTV-Windows.exe
+      artifact_name: windows-latest-app
+      source_ref: ${{ inputs.source_ref || github.sha }}
