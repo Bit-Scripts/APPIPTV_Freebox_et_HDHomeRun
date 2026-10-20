@@ -1,6 +1,13 @@
 name: Build and Release Application
 
 on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: 'Tag or commit to rebuild without moving it'
+        required: true
+        default: 'v1.5.0'
+        type: string
   push:
     branches: [main]
     tags:
@@ -11,6 +18,9 @@ permissions:
 
 jobs:
   build:
+    defaults:
+      run:
+        working-directory: source
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -28,8 +38,17 @@ jobs:
             output_name: APPIPTV-macOS.dmg
 
     steps:
-      - name: Check out code
+      - name: Check out CI tooling
         uses: actions/checkout@v4
+
+      - name: Check out exact application source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref || github.sha }}
+          path: source
+
+      - name: Show source revision
+        run: git log -1 --format="%H %D"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -53,7 +72,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          $dll = python specs/fetch_windows_mpv.py --output "$env:RUNNER_TEMP/mpv"
+          $dll = python ../specs/fetch_windows_mpv.py --output "$env:RUNNER_TEMP/mpv"
           if ($LASTEXITCODE -ne 0) { throw 'libmpv download/verification failed' }
           "IPTV_LIBMPV=$dll" | Out-File -FilePath $env:GITHUB_ENV -Append
           (Split-Path $dll) | Out-File -FilePath $env:GITHUB_PATH -Append
@@ -66,24 +85,24 @@ jobs:
 
       - name: Verify native libmpv and packaging helpers
         run: |
-          python -s specs/smoke_libmpv.py
-          python -s -m unittest discover -s tests -p test_mpv_distribution.py -v
-          python -s -m unittest discover -s tests -p test_windows_mpv.py -v
+          python -s ../specs/smoke_libmpv.py
+          python -s -m unittest discover -s ../tests -p test_mpv_distribution.py -v
+          python -s -m unittest discover -s ../tests -p test_windows_mpv.py -v
 
       - name: Build with PyInstaller using spec file
         run: |
           pyinstaller ${{ matrix.spec_file }}
 
       - name: Verify bundled native libraries and Qt platform plugin
-        run: python -s specs/verify_bundle.py dist/APPIPTV
+        run: python -s ../specs/verify_bundle.py dist/APPIPTV
         if: matrix.os == 'ubuntu-latest'
 
       - name: Verify Windows bundle
-        run: python -s specs/verify_bundle.py dist/APPIPTV.exe
+        run: python -s ../specs/verify_bundle.py dist/APPIPTV.exe
         if: matrix.os == 'windows-latest'
 
       - name: Verify macOS bundle
-        run: python -s specs/verify_bundle.py dist/APPIPTV.app
+        run: python -s ../specs/verify_bundle.py dist/APPIPTV.app
         if: matrix.os == 'macos-latest'
 
       - name: Rename output files (Linux)
@@ -115,7 +134,7 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.os }}-app
-          path: dist/${{ matrix.output_name }}
+          path: source/dist/${{ matrix.output_name }}
           if-no-files-found: error
 
   release:
