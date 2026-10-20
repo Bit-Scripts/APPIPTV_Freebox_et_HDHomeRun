@@ -43,7 +43,7 @@ class WindowsMpvTest(unittest.TestCase):
             library.write_bytes(pe_header())
             with patch('specs.fetch_windows_mpv.subprocess.run') as extract, \
                  patch('specs.fetch_windows_mpv.shutil.which', return_value='7z'):
-                self.assertEqual(fetch(root, lock), library)
+                self.assertTrue(fetch(root, lock).samefile(library))
                 extract.assert_called_once()
             library.write_bytes(pe_header(0x14c))
             with self.assertRaisesRegex(ValueError, 'x86_64'):

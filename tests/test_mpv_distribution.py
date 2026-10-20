@@ -17,7 +17,7 @@ class DistributionTest(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 build_inputs('specs')
         with tempfile.TemporaryDirectory() as folder:
-            library = Path(folder) / 'libmpv.so.2'
+            library = Path(folder) / ('libmpv-2.dll' if os.name == 'nt' else 'libmpv.so.2')
             library.touch()
             with patch.dict(os.environ, {'IPTV_LIBMPV': str(library)}):
                 inputs = build_inputs('specs')
@@ -39,7 +39,7 @@ class DistributionTest(unittest.TestCase):
 
     def test_all_three_specs_include_native_library_and_qt_gl(self):
         with tempfile.TemporaryDirectory() as folder:
-            library = Path(folder) / 'libmpv.so.2'
+            library = Path(folder) / ('libmpv-2.dll' if os.name == 'nt' else 'libmpv.so.2')
             library.touch()
             for platform in ('linux', 'windows', 'macos'):
                 with self.subTest(platform=platform), patch.dict(os.environ, {'IPTV_LIBMPV': str(library)}):
