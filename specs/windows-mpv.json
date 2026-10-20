@@ -1,0 +1,9 @@
+{
+  "provider": "shinchiro/mpv-winbuild-cmake",
+  "release": "20261020",
+  "architecture": "x86_64",
+  "url": "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20261020/mpv-dev-x86_64-20261020-git-6a262d11f6.7z",
+  "sha256": "d16ea67bcc46d4ee9170f05b322d7184768f216f458bef089c3397a6beaff83e",
+  "library": "libmpv-2.dll",
+  "source_reference": "https://mpv.io/installation/"
+}

@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*.*.*'
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -35,7 +38,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pyinstaller
+          pip install pyinstaller==6.22.3
 
       - name: Install libmpv on Linux
         if: matrix.os == 'ubuntu-latest'
@@ -47,18 +50,11 @@ jobs:
       - name: Install shared libmpv on Windows
         if: matrix.os == 'windows-latest'
         shell: pwsh
-        env:
-          MPV_WINDOWS_LIB_URL: ${{ vars.MPV_WINDOWS_LIB_URL }}
         run: |
-          if (!$env:MPV_WINDOWS_LIB_URL.StartsWith('https://')) {
-            throw 'Configure MPV_WINDOWS_LIB_URL with a trusted x64 shared libmpv ZIP URL'
-          }
-          Invoke-WebRequest $env:MPV_WINDOWS_LIB_URL -OutFile "$env:RUNNER_TEMP/mpv.zip"
-          Expand-Archive "$env:RUNNER_TEMP/mpv.zip" "$env:RUNNER_TEMP/mpv"
-          $dll = Get-ChildItem "$env:RUNNER_TEMP/mpv" -Recurse -Filter mpv-2.dll | Select-Object -First 1
-          if (!$dll) { throw 'mpv-2.dll absent from archive' }
-          "IPTV_LIBMPV=$($dll.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
-          $dll.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Append
+          $dll = python specs/fetch_windows_mpv.py --output "$env:RUNNER_TEMP/mpv"
+          if ($LASTEXITCODE -ne 0) { throw 'libmpv download/verification failed' }
+          "IPTV_LIBMPV=$dll" | Out-File -FilePath $env:GITHUB_ENV -Append
+          (Split-Path $dll) | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Install libmpv and create-dmg on macOS
         if: matrix.os == 'macos-latest'
@@ -66,9 +62,27 @@ jobs:
           brew install mpv create-dmg
           echo "IPTV_LIBMPV=$(brew --prefix mpv)/lib/libmpv.dylib" >> "$GITHUB_ENV"
 
+      - name: Verify native libmpv and packaging helpers
+        run: |
+          python -s specs/smoke_libmpv.py
+          python -s -m unittest discover -s tests -p test_mpv_distribution.py -v
+          python -s -m unittest discover -s tests -p test_windows_mpv.py -v
+
       - name: Build with PyInstaller using spec file
         run: |
           pyinstaller ${{ matrix.spec_file }}
+
+      - name: Verify bundled native libraries and Qt platform plugin
+        run: python -s specs/verify_bundle.py dist/APPIPTV
+        if: matrix.os == 'ubuntu-latest'
+
+      - name: Verify Windows bundle
+        run: python -s specs/verify_bundle.py dist/APPIPTV.exe
+        if: matrix.os == 'windows-latest'
+
+      - name: Verify macOS bundle
+        run: python -s specs/verify_bundle.py dist/APPIPTV.app
+        if: matrix.os == 'macos-latest'
 
       - name: Rename output files (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -96,12 +110,15 @@ jobs:
             "dist/APPIPTV.app"
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.os }}-app
           path: dist/${{ matrix.output_name }}
+          if-no-files-found: error
 
   release:
+    permissions:
+      contents: write
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -109,17 +126,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download Linux Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ubuntu-latest-app
 
       - name: Download Windows Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: windows-latest-app
 
       - name: Download macOS Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: macos-latest-app
 

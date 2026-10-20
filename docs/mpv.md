@@ -92,14 +92,57 @@ IPTV_LIBMPV=/usr/lib/x86_64-linux-gnu/libmpv.so.2 python -s -m PyInstaller specs
 # Windows PowerShell : $env:IPTV_LIBMPV='C:\mpv\mpv-2.dll'
 ```
 
-PyInstaller collecte les dépendances natives résolues de cette bibliothèque.
-Sous Windows, utiliser une distribution libmpv partagée, et non le seul mpv.exe.
-Le workflow Windows attend la variable de dépôt `MPV_WINDOWS_LIB_URL` : URL HTTPS
-d'une archive ZIP de confiance contenant `mpv-2.dll` pour Python x64. Il refuse
-explicitement de construire sans cette source. Le build macOS nécessite mpv via
-Homebrew. Les distributions doivent être testées sur chaque OS, y compris les
-plugins Qt de plateforme et les dépendances natives, avant diffusion. Les builds
-multi-OS n'ont pas été exécutés dans cette session.
+PyInstaller collecte récursivement les dépendances natives résolues de libmpv
+sur Linux et macOS. Sous Windows, les DLL voisines de la bibliothèque sont aussi
+incluses. Les hooks PyInstaller PyQt6 collectent Qt OpenGL et ses plugins de
+plateforme ; le workflow vérifie leur présence dans le paquet final pour chaque
+OS (Wayland, Windows ou Cocoa), ainsi que la bibliothèque libmpv elle-même.
+Un smoke test charge la bibliothèque exacte choisie avant le build : une mauvaise
+architecture ou une dépendance introuvable fait échouer ce contrôle.
+
+### Source Windows reproductible
+
+La variable externe `MPV_WINDOWS_LIB_URL` n'est plus nécessaire. Le fichier
+`specs/windows-mpv.json` fixe une archive **x86_64 standard**, sa version, son URL
+et son SHA-256. Il s'agit du build tiers shinchiro référencé par la
+[page d'installation de mpv](https://mpv.io/installation/), et non d'un binaire
+officiel du projet mpv. La version épinglée est `20261020`, commit mpv
+`6a262d11f6`. Le téléchargement réel de 31 611 843 octets a été vérifié contre le
+SHA-256 publié dans les métadonnées de la release GitHub et contient
+`libmpv-2.dll` au format PE x86_64.
+
+```powershell
+# 7-Zip doit être disponible dans PATH (fourni par windows-latest).
+$dll = python specs/fetch_windows_mpv.py --output "$env:TEMP/iptv-mpv"
+$env:IPTV_LIBMPV = $dll
+python -s specs/smoke_libmpv.py
+python -s -m PyInstaller specs/main-windows.spec
+python -s specs/verify_bundle.py dist/APPIPTV.exe
+```
+
+Le script vérifie le SHA-256 avant extraction et rejette une DLL d'une autre
+architecture. Pour mettre à jour la source, choisir une nouvelle archive
+`mpv-dev-x86_64` dans les releases du fournisseur, vérifier son contenu et son
+SHA-256 publié, puis mettre à jour le manifeste dans Git. Il ne télécharge pas
+une URL `latest` variable à chaque build.
+
+### Workflow de publication
+
+Les deux commits distants de mise à jour des artefacts sont intégrés. Les actions
+sont désormais épinglées par commit : upload-artifact `v7.0.2` et
+download-artifact `v8.0.2`, compatibles avec les artefacts de la génération v4+
+et les runners GitHub hébergés actuels. Le job de publication reçoit explicitement
+`contents: write` ; les jobs de build gardent `contents: read`. Aucune variable
+ni permission d'administration d'organisation n'est requise pour la source DLL.
+Validation locale de ce lot : workflow analysé par actionlint 1.7.12 ; six
+contrôles ciblés de distribution réussis ; archive Windows réellement téléchargée,
+SHA-256 et PE x64 vérifiés ; paquet Linux réellement construit avec PyInstaller
+6.22.3. Son archive contient le binding Python `mpv`, libmpv, libavcodec,
+libavformat, libass, Qt OpenGL/OpenGLWidgets et le plugin Qt Wayland. Le paquet
+Linux a également démarré sous Wayland en locale française, avec
+rafraîchissement complet des 928 logos. Les binaires Windows et macOS doivent
+encore être construits et exécutés sur leurs OS
+respectifs avant de considérer leur fonctionnement intégral validé.
 
 ## Catalogue et logos Freebox
 
